@@ -8,24 +8,27 @@ dash.calc('kpis', {
   inputs: ['calls'],
   fn: (calls) => {
     const p = dash.params();
-    const keep = (r) => (!p.week || r.week === p.week) &&
+    const keep = (r) => (!p.ctype || (r.campaign != null && (r.campaign.startsWith('PDM') ? 'Awareness' : 'Collection') === p.ctype)) &&
+      (!p.week || r.week === p.week) &&
       (!p.agent || r.agent === p.agent) &&
       (!p.lang || r.lang === p.lang) &&
-      (!p.region || r.region === p.region) &&
+      (!p.campaign || r.campaign === p.campaign) &&
       (!p.outcome || r.outcome === p.outcome) &&
       (!p.intent || r.intent === p.intent) &&
       (!p.cap || r.cap === p.cap) &&
       (!p.reason || r.reason === p.reason) &&
       (!p.rsub || r.rsub === p.rsub) &&
       (!p.sent || r.sent === p.sent) &&
+      (!p.attend || r.attend === p.attend) &&
+      (!p.dband || r.dband === p.dband) &&
       (!p.flag || r[p.flag] === 1) &&
       (!p.param || r[p.param] === 0 || r[p.param] === 2);
     const PTP = new Set(['Promise To Pay', 'Penal PTP', 'NACH PTP']);
     let n = 0, a = 0, ss = 0, fat = 0, ptp = 0, paid = 0, wc = 0, rtp = 0, hi = 0, dur = 0;
-    const agents = new Set(), amts = [];
+    const agents = new Set(), leads = new Set(), amts = [];
     for (const r of calls) {
       if (!keep(r)) continue;
-      n++; dur += r.dur; agents.add(r.agent);
+      n++; dur += r.dur; agents.add(r.agent); if (r.lan != null) leads.add(r.lan);
       if (!r.act) continue;
       a++; ss += r.score || 0;
       if (r.fatal) fat++;
@@ -40,7 +43,7 @@ dash.calc('kpis', {
     const pc = (x, y) => (y ? Math.round(1000 * x / y) / 10 : null);
     return [{ calls: n, connected: a, connect_rate: pc(a, n), avg_score: a ? Math.round(100 * ss / a) / 100 : null,
       fatal_calls: fat, fatal_rate: pc(fat, a), ptp_calls: ptp, ptp_rate: pc(ptp, a), payment_done: paid, will_clear: wc,
-      refused: rtp, high_intent_pct: pc(hi, a), median_ptp_amount: med, agents: agents.size,
+      refused: rtp, high_intent_pct: pc(hi, a), median_ptp_amount: med, agents: agents.size, leads: leads.size,
       avg_duration_sec: n ? Math.round(dur / n) : null }];
   },
 });
@@ -51,16 +54,19 @@ dash.calc('trend', {
   inputs: ['calls'],
   fn: (calls) => {
     const p = dash.params();
-    const keep = (r) => (!p.week || r.week === p.week) &&
+    const keep = (r) => (!p.ctype || (r.campaign != null && (r.campaign.startsWith('PDM') ? 'Awareness' : 'Collection') === p.ctype)) &&
+      (!p.week || r.week === p.week) &&
       (!p.agent || r.agent === p.agent) &&
       (!p.lang || r.lang === p.lang) &&
-      (!p.region || r.region === p.region) &&
+      (!p.campaign || r.campaign === p.campaign) &&
       (!p.outcome || r.outcome === p.outcome) &&
       (!p.intent || r.intent === p.intent) &&
       (!p.cap || r.cap === p.cap) &&
       (!p.reason || r.reason === p.reason) &&
       (!p.rsub || r.rsub === p.rsub) &&
       (!p.sent || r.sent === p.sent) &&
+      (!p.attend || r.attend === p.attend) &&
+      (!p.dband || r.dband === p.dband) &&
       (!p.flag || r[p.flag] === 1) &&
       (!p.param || r[p.param] === 0 || r[p.param] === 2);
     const PTP = new Set(['Promise To Pay', 'Penal PTP', 'NACH PTP']);
@@ -111,15 +117,18 @@ dash.calc('by_week', {
   inputs: ['calls'],
   fn: (calls) => {
     const p = dash.params();
-    const keep = (r) => (!p.agent || r.agent === p.agent) &&
+    const keep = (r) => (!p.ctype || (r.campaign != null && (r.campaign.startsWith('PDM') ? 'Awareness' : 'Collection') === p.ctype)) &&
+      (!p.agent || r.agent === p.agent) &&
       (!p.lang || r.lang === p.lang) &&
-      (!p.region || r.region === p.region) &&
+      (!p.campaign || r.campaign === p.campaign) &&
       (!p.outcome || r.outcome === p.outcome) &&
       (!p.intent || r.intent === p.intent) &&
       (!p.cap || r.cap === p.cap) &&
       (!p.reason || r.reason === p.reason) &&
       (!p.rsub || r.rsub === p.rsub) &&
       (!p.sent || r.sent === p.sent) &&
+      (!p.attend || r.attend === p.attend) &&
+      (!p.dband || r.dband === p.dband) &&
       (!p.flag || r[p.flag] === 1) &&
       (!p.param || r[p.param] === 0 || r[p.param] === 2);
     const PTP = new Set(['Promise To Pay', 'Penal PTP', 'NACH PTP']);
@@ -145,15 +154,18 @@ dash.calc('by_agent', {
   inputs: ['calls'],
   fn: (calls) => {
     const p = dash.params();
-    const keep = (r) => (!p.week || r.week === p.week) &&
+    const keep = (r) => (!p.ctype || (r.campaign != null && (r.campaign.startsWith('PDM') ? 'Awareness' : 'Collection') === p.ctype)) &&
+      (!p.week || r.week === p.week) &&
       (!p.lang || r.lang === p.lang) &&
-      (!p.region || r.region === p.region) &&
+      (!p.campaign || r.campaign === p.campaign) &&
       (!p.outcome || r.outcome === p.outcome) &&
       (!p.intent || r.intent === p.intent) &&
       (!p.cap || r.cap === p.cap) &&
       (!p.reason || r.reason === p.reason) &&
       (!p.rsub || r.rsub === p.rsub) &&
       (!p.sent || r.sent === p.sent) &&
+      (!p.attend || r.attend === p.attend) &&
+      (!p.dband || r.dband === p.dband) &&
       (!p.flag || r[p.flag] === 1) &&
       (!p.param || r[p.param] === 0 || r[p.param] === 2);
     const PTP = new Set(['Promise To Pay', 'Penal PTP', 'NACH PTP']);
@@ -179,15 +191,18 @@ dash.calc('by_lang', {
   inputs: ['calls'],
   fn: (calls) => {
     const p = dash.params();
-    const keep = (r) => (!p.week || r.week === p.week) &&
+    const keep = (r) => (!p.ctype || (r.campaign != null && (r.campaign.startsWith('PDM') ? 'Awareness' : 'Collection') === p.ctype)) &&
+      (!p.week || r.week === p.week) &&
       (!p.agent || r.agent === p.agent) &&
-      (!p.region || r.region === p.region) &&
+      (!p.campaign || r.campaign === p.campaign) &&
       (!p.outcome || r.outcome === p.outcome) &&
       (!p.intent || r.intent === p.intent) &&
       (!p.cap || r.cap === p.cap) &&
       (!p.reason || r.reason === p.reason) &&
       (!p.rsub || r.rsub === p.rsub) &&
       (!p.sent || r.sent === p.sent) &&
+      (!p.attend || r.attend === p.attend) &&
+      (!p.dband || r.dband === p.dband) &&
       (!p.flag || r[p.flag] === 1) &&
       (!p.param || r[p.param] === 0 || r[p.param] === 2);
     const PTP = new Set(['Promise To Pay', 'Penal PTP', 'NACH PTP']);
@@ -207,13 +222,14 @@ dash.calc('by_lang', {
   },
 });
 
-dash.calc('by_region', {
-  title: 'Calls by region (selection)',
-  description: 'Calls, PTP rate, fatal rate and quality score for each calls by region value, under every filter except this one.',
+dash.calc('by_campaign', {
+  title: 'Calls by campaign (selection)',
+  description: 'Calls, PTP rate, fatal rate and quality score for each calls by campaign value, under every filter except this one.',
   inputs: ['calls'],
   fn: (calls) => {
     const p = dash.params();
-    const keep = (r) => (!p.week || r.week === p.week) &&
+    const keep = (r) => (!p.ctype || (r.campaign != null && (r.campaign.startsWith('PDM') ? 'Awareness' : 'Collection') === p.ctype)) &&
+      (!p.week || r.week === p.week) &&
       (!p.agent || r.agent === p.agent) &&
       (!p.lang || r.lang === p.lang) &&
       (!p.outcome || r.outcome === p.outcome) &&
@@ -222,13 +238,15 @@ dash.calc('by_region', {
       (!p.reason || r.reason === p.reason) &&
       (!p.rsub || r.rsub === p.rsub) &&
       (!p.sent || r.sent === p.sent) &&
+      (!p.attend || r.attend === p.attend) &&
+      (!p.dband || r.dband === p.dband) &&
       (!p.flag || r[p.flag] === 1) &&
       (!p.param || r[p.param] === 0 || r[p.param] === 2);
     const PTP = new Set(['Promise To Pay', 'Penal PTP', 'NACH PTP']);
     const g = new Map();
     let total = 0;
     for (const r of calls) {
-      const k = r.region;
+      const k = r.campaign;
       if (k == null || !keep(r)) continue;
       let o = g.get(k);
       if (!o) g.set(k, o = { n: 0, a: 0, ss: 0, ptp: 0, fat: 0 });
@@ -236,7 +254,7 @@ dash.calc('by_region', {
       if (r.act) { o.a++; o.ss += r.score || 0; if (PTP.has(r.outcome)) o.ptp++; if (r.fatal) o.fat++; }
     }
     const pc = (x, y) => (y ? Math.round(1000 * x / y) / 10 : null);
-    return [...g].map(([k, o]) => ({ region: k, calls: o.n, share: pc(o.n, total), connected: o.a, ptp_rate: pc(o.ptp, o.a),
+    return [...g].map(([k, o]) => ({ campaign: k, calls: o.n, share: pc(o.n, total), connected: o.a, ptp_rate: pc(o.ptp, o.a),
       fatal_rate: pc(o.fat, o.a), avg_score: o.a ? Math.round(100 * o.ss / o.a) / 100 : null })).sort((x, y) => y.calls - x.calls);
   },
 });
@@ -247,15 +265,18 @@ dash.calc('by_outcome', {
   inputs: ['calls'],
   fn: (calls) => {
     const p = dash.params();
-    const keep = (r) => (!p.week || r.week === p.week) &&
+    const keep = (r) => (!p.ctype || (r.campaign != null && (r.campaign.startsWith('PDM') ? 'Awareness' : 'Collection') === p.ctype)) &&
+      (!p.week || r.week === p.week) &&
       (!p.agent || r.agent === p.agent) &&
       (!p.lang || r.lang === p.lang) &&
-      (!p.region || r.region === p.region) &&
+      (!p.campaign || r.campaign === p.campaign) &&
       (!p.intent || r.intent === p.intent) &&
       (!p.cap || r.cap === p.cap) &&
       (!p.reason || r.reason === p.reason) &&
       (!p.rsub || r.rsub === p.rsub) &&
       (!p.sent || r.sent === p.sent) &&
+      (!p.attend || r.attend === p.attend) &&
+      (!p.dband || r.dband === p.dband) &&
       (!p.flag || r[p.flag] === 1) &&
       (!p.param || r[p.param] === 0 || r[p.param] === 2);
     const PTP = new Set(['Promise To Pay', 'Penal PTP', 'NACH PTP']);
@@ -281,15 +302,18 @@ dash.calc('by_intent', {
   inputs: ['calls'],
   fn: (calls) => {
     const p = dash.params();
-    const keep = (r) => (!p.week || r.week === p.week) &&
+    const keep = (r) => (!p.ctype || (r.campaign != null && (r.campaign.startsWith('PDM') ? 'Awareness' : 'Collection') === p.ctype)) &&
+      (!p.week || r.week === p.week) &&
       (!p.agent || r.agent === p.agent) &&
       (!p.lang || r.lang === p.lang) &&
-      (!p.region || r.region === p.region) &&
+      (!p.campaign || r.campaign === p.campaign) &&
       (!p.outcome || r.outcome === p.outcome) &&
       (!p.cap || r.cap === p.cap) &&
       (!p.reason || r.reason === p.reason) &&
       (!p.rsub || r.rsub === p.rsub) &&
       (!p.sent || r.sent === p.sent) &&
+      (!p.attend || r.attend === p.attend) &&
+      (!p.dband || r.dband === p.dband) &&
       (!p.flag || r[p.flag] === 1) &&
       (!p.param || r[p.param] === 0 || r[p.param] === 2);
     const PTP = new Set(['Promise To Pay', 'Penal PTP', 'NACH PTP']);
@@ -315,15 +339,18 @@ dash.calc('by_cap', {
   inputs: ['calls'],
   fn: (calls) => {
     const p = dash.params();
-    const keep = (r) => (!p.week || r.week === p.week) &&
+    const keep = (r) => (!p.ctype || (r.campaign != null && (r.campaign.startsWith('PDM') ? 'Awareness' : 'Collection') === p.ctype)) &&
+      (!p.week || r.week === p.week) &&
       (!p.agent || r.agent === p.agent) &&
       (!p.lang || r.lang === p.lang) &&
-      (!p.region || r.region === p.region) &&
+      (!p.campaign || r.campaign === p.campaign) &&
       (!p.outcome || r.outcome === p.outcome) &&
       (!p.intent || r.intent === p.intent) &&
       (!p.reason || r.reason === p.reason) &&
       (!p.rsub || r.rsub === p.rsub) &&
       (!p.sent || r.sent === p.sent) &&
+      (!p.attend || r.attend === p.attend) &&
+      (!p.dband || r.dband === p.dband) &&
       (!p.flag || r[p.flag] === 1) &&
       (!p.param || r[p.param] === 0 || r[p.param] === 2);
     const PTP = new Set(['Promise To Pay', 'Penal PTP', 'NACH PTP']);
@@ -349,15 +376,18 @@ dash.calc('by_reason', {
   inputs: ['calls'],
   fn: (calls) => {
     const p = dash.params();
-    const keep = (r) => (!p.week || r.week === p.week) &&
+    const keep = (r) => (!p.ctype || (r.campaign != null && (r.campaign.startsWith('PDM') ? 'Awareness' : 'Collection') === p.ctype)) &&
+      (!p.week || r.week === p.week) &&
       (!p.agent || r.agent === p.agent) &&
       (!p.lang || r.lang === p.lang) &&
-      (!p.region || r.region === p.region) &&
+      (!p.campaign || r.campaign === p.campaign) &&
       (!p.outcome || r.outcome === p.outcome) &&
       (!p.intent || r.intent === p.intent) &&
       (!p.cap || r.cap === p.cap) &&
       (!p.rsub || r.rsub === p.rsub) &&
       (!p.sent || r.sent === p.sent) &&
+      (!p.attend || r.attend === p.attend) &&
+      (!p.dband || r.dband === p.dband) &&
       (!p.flag || r[p.flag] === 1) &&
       (!p.param || r[p.param] === 0 || r[p.param] === 2);
     const PTP = new Set(['Promise To Pay', 'Penal PTP', 'NACH PTP']);
@@ -383,15 +413,18 @@ dash.calc('by_rsub', {
   inputs: ['calls'],
   fn: (calls) => {
     const p = dash.params();
-    const keep = (r) => (!p.week || r.week === p.week) &&
+    const keep = (r) => (!p.ctype || (r.campaign != null && (r.campaign.startsWith('PDM') ? 'Awareness' : 'Collection') === p.ctype)) &&
+      (!p.week || r.week === p.week) &&
       (!p.agent || r.agent === p.agent) &&
       (!p.lang || r.lang === p.lang) &&
-      (!p.region || r.region === p.region) &&
+      (!p.campaign || r.campaign === p.campaign) &&
       (!p.outcome || r.outcome === p.outcome) &&
       (!p.intent || r.intent === p.intent) &&
       (!p.cap || r.cap === p.cap) &&
       (!p.reason || r.reason === p.reason) &&
       (!p.sent || r.sent === p.sent) &&
+      (!p.attend || r.attend === p.attend) &&
+      (!p.dband || r.dband === p.dband) &&
       (!p.flag || r[p.flag] === 1) &&
       (!p.param || r[p.param] === 0 || r[p.param] === 2);
     const PTP = new Set(['Promise To Pay', 'Penal PTP', 'NACH PTP']);
@@ -417,15 +450,18 @@ dash.calc('by_sent', {
   inputs: ['calls'],
   fn: (calls) => {
     const p = dash.params();
-    const keep = (r) => (!p.week || r.week === p.week) &&
+    const keep = (r) => (!p.ctype || (r.campaign != null && (r.campaign.startsWith('PDM') ? 'Awareness' : 'Collection') === p.ctype)) &&
+      (!p.week || r.week === p.week) &&
       (!p.agent || r.agent === p.agent) &&
       (!p.lang || r.lang === p.lang) &&
-      (!p.region || r.region === p.region) &&
+      (!p.campaign || r.campaign === p.campaign) &&
       (!p.outcome || r.outcome === p.outcome) &&
       (!p.intent || r.intent === p.intent) &&
       (!p.cap || r.cap === p.cap) &&
       (!p.reason || r.reason === p.reason) &&
       (!p.rsub || r.rsub === p.rsub) &&
+      (!p.attend || r.attend === p.attend) &&
+      (!p.dband || r.dband === p.dband) &&
       (!p.flag || r[p.flag] === 1) &&
       (!p.param || r[p.param] === 0 || r[p.param] === 2);
     const PTP = new Set(['Promise To Pay', 'Penal PTP', 'NACH PTP']);
@@ -451,16 +487,19 @@ dash.calc('by_param', {
   inputs: ['calls'],
   fn: (calls) => {
     const p = dash.params();
-    const keep = (r) => (!p.week || r.week === p.week) &&
+    const keep = (r) => (!p.ctype || (r.campaign != null && (r.campaign.startsWith('PDM') ? 'Awareness' : 'Collection') === p.ctype)) &&
+      (!p.week || r.week === p.week) &&
       (!p.agent || r.agent === p.agent) &&
       (!p.lang || r.lang === p.lang) &&
-      (!p.region || r.region === p.region) &&
+      (!p.campaign || r.campaign === p.campaign) &&
       (!p.outcome || r.outcome === p.outcome) &&
       (!p.intent || r.intent === p.intent) &&
       (!p.cap || r.cap === p.cap) &&
       (!p.reason || r.reason === p.reason) &&
       (!p.rsub || r.rsub === p.rsub) &&
       (!p.sent || r.sent === p.sent) &&
+      (!p.attend || r.attend === p.attend) &&
+      (!p.dband || r.dband === p.dband) &&
       (!p.flag || r[p.flag] === 1);
     const LABELS = { p_open: 'Avoid delay in opening', p_greet: 'Greeting & introduction', p_purpose: 'Purpose of the call', p_queries: 'Addressed all queries', p_info: 'Complete & correct info', p_probe: 'Necessary probing', p_objection: 'Objection handling', p_tone: 'Tone & professional language', p_listen: 'Active listening', p_empathy: 'Empathy & acknowledgement', p_hold: 'Dead air / hold procedure', p_dispo: 'Correct disposition tagged', p_proactive: 'Proactive effort', p_closing: 'Closing', p_ethics: 'Conduct & ethics (ZT)', p_datasec: 'No data-security breach', p_aprof: 'No agent profanity' };
     const o = {};
@@ -486,16 +525,19 @@ dash.calc('by_flag', {
   inputs: ['calls'],
   fn: (calls) => {
     const p = dash.params();
-    const keep = (r) => (!p.week || r.week === p.week) &&
+    const keep = (r) => (!p.ctype || (r.campaign != null && (r.campaign.startsWith('PDM') ? 'Awareness' : 'Collection') === p.ctype)) &&
+      (!p.week || r.week === p.week) &&
       (!p.agent || r.agent === p.agent) &&
       (!p.lang || r.lang === p.lang) &&
-      (!p.region || r.region === p.region) &&
+      (!p.campaign || r.campaign === p.campaign) &&
       (!p.outcome || r.outcome === p.outcome) &&
       (!p.intent || r.intent === p.intent) &&
       (!p.cap || r.cap === p.cap) &&
       (!p.reason || r.reason === p.reason) &&
       (!p.rsub || r.rsub === p.rsub) &&
       (!p.sent || r.sent === p.sent) &&
+      (!p.attend || r.attend === p.attend) &&
+      (!p.dband || r.dband === p.dband) &&
       (!p.param || r[p.param] === 0 || r[p.param] === 2);
     const LABELS = { f_fatal: 'Fatal error on call', f_visit: 'Home-visit threat by agent', f_threat: 'Legal / court / bank / social threat', f_aprof: 'Agent profanity', f_cprof: 'Customer profanity', f_datasec: 'Data-security breach', f_dnd: 'DND requested by customer', f_rbi: 'RBI mentioned', f_wilful: 'Wilful default suspected', f_angry: 'Angry or frustrated customer', f_waiver: 'Waiver pitched', f_settle: 'Settlement discussed' };
     const c = {};
@@ -511,22 +553,58 @@ dash.calc('by_flag', {
   },
 });
 
-dash.calc('unanalysed', {
-  title: 'Calls not analysable (selection)',
-  description: 'Why calls in the selection could not be audited.',
+dash.calc('attendance', {
+  title: 'Attended calls and call length',
+  description: 'Total calls split into attended (dialer marked Connected) and not attended, and attended calls by length. Ignores the attended and call-length filters so every tile stays visible.',
   inputs: ['calls'],
   fn: (calls) => {
     const p = dash.params();
-    const keep = (r) => (!p.week || r.week === p.week) &&
+    const keep = (r) => (!p.ctype || (r.campaign != null && (r.campaign.startsWith('PDM') ? 'Awareness' : 'Collection') === p.ctype)) &&
+      (!p.week || r.week === p.week) &&
       (!p.agent || r.agent === p.agent) &&
       (!p.lang || r.lang === p.lang) &&
-      (!p.region || r.region === p.region) &&
+      (!p.campaign || r.campaign === p.campaign) &&
       (!p.outcome || r.outcome === p.outcome) &&
       (!p.intent || r.intent === p.intent) &&
       (!p.cap || r.cap === p.cap) &&
       (!p.reason || r.reason === p.reason) &&
       (!p.rsub || r.rsub === p.rsub) &&
       (!p.sent || r.sent === p.sent) &&
+      (!p.flag || r[p.flag] === 1) &&
+      (!p.param || r[p.param] === 0 || r[p.param] === 2);
+    let n = 0, att = 0, not = 0, u1 = 0, m12 = 0, o2 = 0;
+    for (const r of calls) {
+      if (!keep(r)) continue;
+      n++;
+      if (r.attend === 'Attended') att++; else if (r.attend === 'Not attended') not++;
+      if (r.dband === 'Under 1 min') u1++; else if (r.dband === '1–2 min') m12++; else if (r.dband === '2 min and over') o2++;
+    }
+    const pc = (x, y) => (y ? Math.round(1000 * x / y) / 10 : null);
+    return [{ calls: n, attended: att, attended_pct: pc(att, n), not_attended: not, not_attended_pct: pc(not, n),
+      unknown: n - att - not, under_1min: u1, under_1min_pct: pc(u1, att), min_1_2: m12, min_1_2_pct: pc(m12, att),
+      over_2min: o2, over_2min_pct: pc(o2, att) }];
+  },
+});
+
+dash.calc('unanalysed', {
+  title: 'Calls not analysable (selection)',
+  description: 'Why calls in the selection could not be audited.',
+  inputs: ['calls'],
+  fn: (calls) => {
+    const p = dash.params();
+    const keep = (r) => (!p.ctype || (r.campaign != null && (r.campaign.startsWith('PDM') ? 'Awareness' : 'Collection') === p.ctype)) &&
+      (!p.week || r.week === p.week) &&
+      (!p.agent || r.agent === p.agent) &&
+      (!p.lang || r.lang === p.lang) &&
+      (!p.campaign || r.campaign === p.campaign) &&
+      (!p.outcome || r.outcome === p.outcome) &&
+      (!p.intent || r.intent === p.intent) &&
+      (!p.cap || r.cap === p.cap) &&
+      (!p.reason || r.reason === p.reason) &&
+      (!p.rsub || r.rsub === p.rsub) &&
+      (!p.sent || r.sent === p.sent) &&
+      (!p.attend || r.attend === p.attend) &&
+      (!p.dband || r.dband === p.dband) &&
       (!p.flag || r[p.flag] === 1) &&
       (!p.param || r[p.param] === 0 || r[p.param] === 2);
     const g = new Map();
@@ -541,16 +619,19 @@ dash.calc('call_list', {
   inputs: ['calls'],
   fn: (calls) => {
     const p = dash.params();
-    const keep = (r) => (!p.week || r.week === p.week) &&
+    const keep = (r) => (!p.ctype || (r.campaign != null && (r.campaign.startsWith('PDM') ? 'Awareness' : 'Collection') === p.ctype)) &&
+      (!p.week || r.week === p.week) &&
       (!p.agent || r.agent === p.agent) &&
       (!p.lang || r.lang === p.lang) &&
-      (!p.region || r.region === p.region) &&
+      (!p.campaign || r.campaign === p.campaign) &&
       (!p.outcome || r.outcome === p.outcome) &&
       (!p.intent || r.intent === p.intent) &&
       (!p.cap || r.cap === p.cap) &&
       (!p.reason || r.reason === p.reason) &&
       (!p.rsub || r.rsub === p.rsub) &&
       (!p.sent || r.sent === p.sent) &&
+      (!p.attend || r.attend === p.attend) &&
+      (!p.dband || r.dband === p.dband) &&
       (!p.flag || r[p.flag] === 1) &&
       (!p.param || r[p.param] === 0 || r[p.param] === 2);
     const LABELS = { p_open: 'Avoid delay in opening', p_greet: 'Greeting & introduction', p_purpose: 'Purpose of the call', p_queries: 'Addressed all queries', p_info: 'Complete & correct info', p_probe: 'Necessary probing', p_objection: 'Objection handling', p_tone: 'Tone & professional language', p_listen: 'Active listening', p_empathy: 'Empathy & acknowledgement', p_hold: 'Dead air / hold procedure', p_dispo: 'Correct disposition tagged', p_proactive: 'Proactive effort', p_closing: 'Closing', p_ethics: 'Conduct & ethics (ZT)', p_datasec: 'No data-security breach', p_aprof: 'No agent profanity' };
@@ -569,11 +650,11 @@ dash.calc('call_list', {
 
 dash.calc('options', {
   title: 'Filter choices',
-  description: 'Every agent, language and region in the file, with its call count, for the filter menus.',
+  description: 'Every agent, language and campaign in the file, with its call count, for the filter menus.',
   inputs: ['calls'],
   fn: (calls) => {
     const g = new Map();
-    for (const r of calls) for (const dim of ['agent', 'lang', 'region']) {
+    for (const r of calls) for (const dim of ['agent', 'lang', 'campaign']) {
       if (r[dim] == null) continue;
       const k = dim + '|' + r[dim];
       g.set(k, (g.get(k) || 0) + 1);

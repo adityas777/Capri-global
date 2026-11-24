@@ -1,6 +1,6 @@
 # Capri Global – Collections Call Explorer (standalone)
 
-A self-contained copy of the interactive Collections Call Explorer (November 2026 calls, 2–18 Nov).
+A self-contained copy of the interactive Collections Call Explorer (November 2026 calls, 2–22 Nov).
 Plain HTML, CSS and JavaScript – no build step, no server code, no internet connection needed.
 
 ## Files
@@ -8,10 +8,10 @@ Plain HTML, CSS and JavaScript – no build step, no server code, no internet co
 |------|-----------|
 | index.html | The page |
 | styles.css, theme.css | Layout, colours (light and dark mode) |
-| data.js | The call-level data (12,192 calls) |
+| data.js | The call-level data (14,712 calls, 2–22 Nov) |
 | dash-shim.js | Small runtime that loads the data, applies filters and redraws charts |
-| loaders.js, calcs.js, leads_calcs.js | How the data is unpacked and every figure is calculated |
-| ui.js, leads_ui.js | Charts, tables, tabs and click-to-filter |
+| loaders.js, calcs.js, leads_calcs.js, trends_calcs.js, pw_calcs.js | How the data is unpacked and every figure is calculated |
+| ui.js, leads_ui.js, leads_links.js, extras.js, pw_ui.js | Charts, tables, tabs, click-to-filter and call links |
 | d3.min.js | Charting library (d3 v7.9.0, ISC licence – see d3-LICENSE.txt) |
 
 ## Try it locally
@@ -29,9 +29,9 @@ A `.replit` file is included that serves the folder with Python if you use a Pyt
 Any static host works: drag the folder onto Netlify Drop, push it to GitHub Pages, or deploy it on Vercel as a static site.
 
 ## Privacy
-`data.js` contains agent names and loan account numbers (no customer names or phone numbers).
-Anyone who can open the hosted link can read it. Keep the Repl / site private or behind a login,
-or ask for a version with loan numbers masked.
+`data.js` contains agent names and masked numbers only: loan account and mobile numbers are cut to their last 4 digits,
+leads are keyed by a one-way hash, and there are no customer names or emails. Agent names and call IDs are still
+internal information, so keep the Repl / site private or behind a login.
 
 ## Updating the data
 Re-run `build_explorer_data.py` on a new call-report export, then replace the JSON inside `data.js`

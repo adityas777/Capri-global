@@ -44,7 +44,7 @@
   const colorOf = (s) => dash.colors[s.i % dash.colors.length];
   const dashOf = (s) => (Math.floor(s.i / dash.colors.length) % 2 ? '6 4' : null);
 
-  const DIM_LABEL = { week: 'Week', agent: 'Agent', lang: 'Language', region: 'Region', outcome: 'Outcome', intent: 'Intent',
+  const DIM_LABEL = { week: 'Week', agent: 'Agent', lang: 'Language', campaign: 'Campaign', ctype: 'Campaign type', attend: 'Attended?', dband: 'Call length', outcome: 'Outcome', intent: 'Intent',
     cap: 'Capability', reason: 'Reason', rsub: 'Specific reason', sent: 'Sentiment', flag: 'Risk flag', param: 'Failed parameter' };
   const VAL_LABEL = {
     f_fatal: 'Fatal error', f_visit: 'Home-visit threat', f_threat: 'Legal / other threat', f_aprof: 'Agent profanity',

@@ -4,20 +4,23 @@
 
 dash.calc('leads', {
   title: 'Leads (loan accounts) in the selection',
-  description: 'One row per loan account called in November, built from its calls that match the page filters.',
+  description: 'One row per loan account called in November, built from its calls that match the page filters. Loan and mobile numbers are masked; the lead key is a one-way hash.',
   inputs: ['calls'],
   fn: (calls) => {
     const p = dash.params();
-    const keep = (r) => (!p.week || r.week === p.week) &&
+    const keep = (r) => (!p.ctype || (r.campaign != null && (r.campaign.startsWith('PDM') ? 'Awareness' : 'Collection') === p.ctype)) &&
+      (!p.week || r.week === p.week) &&
       (!p.agent || r.agent === p.agent) &&
       (!p.lang || r.lang === p.lang) &&
-      (!p.region || r.region === p.region) &&
+      (!p.campaign || r.campaign === p.campaign) &&
       (!p.outcome || r.outcome === p.outcome) &&
       (!p.intent || r.intent === p.intent) &&
       (!p.cap || r.cap === p.cap) &&
       (!p.reason || r.reason === p.reason) &&
       (!p.rsub || r.rsub === p.rsub) &&
       (!p.sent || r.sent === p.sent) &&
+      (!p.attend || r.attend === p.attend) &&
+      (!p.dband || r.dband === p.dband) &&
       (!p.flag || r[p.flag] === 1) &&
       (!p.param || r[p.param] === 0 || r[p.param] === 2);
     const RANK = { 'Paid': 7, 'Promised to pay': 6, 'Will clear': 5, 'Callback / follow-up': 4, 'Refused to pay': 3, 'Other connected': 2, 'Not reached': 1 };
@@ -30,27 +33,29 @@ dash.calc('leads', {
     for (const r of calls) {
       if (r.lan == null || !keep(r)) continue;
       let o = g.get(r.lan);
-      if (!o) g.set(r.lan, o = { lan: r.lan, prod: r.prod, cycle: r.cycle, emi: null, calls: 0, connected: 0, agents: new Set(),
+      if (!o) g.set(r.lan, o = { lan: r.lan, lan_masked: r.lan_masked, mobile: r.mobile_masked, bestDate: null, latestDate: null, firstId: r.id, lastId: r.id, bestId: null, latestId: null, amtId: null, prod: r.prod, cycle: r.cycle, emi: null, calls: 0, connected: 0, agents: new Set(),
         first: r.date, last: r.date, toConnect: null, best: 'Not reached', latest: null, intent: null, hi: 0, ptp: 0, paid: 0, amt: 0 });
-      o.calls++; o.agents.add(r.agent); o.last = r.date; o.prod = r.prod; o.cycle = r.cycle;
+      o.calls++; o.agents.add(r.agent); o.last = r.date; o.lastId = r.id; o.prod = r.prod; o.cycle = r.cycle;
+      if (r.mobile_masked != null) o.mobile = r.mobile_masked;
       if (r.emi != null) o.emi = r.emi;
       if (!r.act) continue;
       o.connected++;
       if (o.toConnect == null) o.toConnect = o.calls;
       const s = statusOf(r.outcome);
-      if (RANK[s] > RANK[o.best]) o.best = s;
-      o.latest = r.outcome; o.intent = r.intent;
+      if (RANK[s] > RANK[o.best]) { o.best = s; o.bestDate = r.date; o.bestId = r.id; }
+      o.latest = r.outcome; o.latestDate = r.date; o.latestId = r.id; o.intent = r.intent;
       if (r.intent === 'High') o.hi = 1;
       if (s === 'Promised to pay' || s === 'Will clear') o.ptp = 1;
       if (s === 'Paid') o.paid = 1;
-      if (r.amt > o.amt) o.amt = r.amt;
+      if (r.amt > o.amt) { o.amt = r.amt; o.amtId = r.id; }
     }
     const att = (n) => (n === 1 ? '1 call' : n === 2 ? '2 calls' : n === 3 ? '3 calls' : n <= 5 ? '4–5 calls' : '6+ calls');
     const band = (e) => (e == null ? 'Unknown' : e < 5000 ? 'Under ₹5k' : e < 10000 ? '₹5k–10k' : e < 20000 ? '₹10k–20k' : e < 50000 ? '₹20k–50k' : '₹50k and above');
-    return [...g.values()].map((o) => ({ lan: o.lan, prod: o.prod, cycle: o.cycle, emi: o.emi, emi_band: band(o.emi),
+    return [...g.values()].map((o) => ({ lan: o.lan, lan_masked: o.lan_masked, mobile_masked: o.mobile, prod: o.prod, cycle: o.cycle, emi: o.emi, emi_band: band(o.emi),
       calls: o.calls, att_band: att(o.calls), connected: o.connected, agents: o.agents.size, first_date: o.first, last_date: o.last,
-      calls_to_connect: o.toConnect, best: o.best, latest_outcome: o.latest, latest_intent: o.intent, high_intent: o.hi,
-      promised: o.ptp, paid: o.paid, ptp_amount: o.amt || null }));
+      calls_to_connect: o.toConnect, best: o.best, best_date: o.bestDate, latest_outcome: o.latest, latest_date: o.latestDate, latest_intent: o.intent, high_intent: o.hi,
+      promised: o.ptp, paid: o.paid, ptp_amount: o.amt || null,
+      first_call_id: o.firstId, last_call_id: o.lastId, best_call_id: o.bestId, latest_call_id: o.latestId, ptp_call_id: o.amtId }));
   },
 });
 
@@ -267,5 +272,51 @@ dash.calc('lead_list', {
       (!p.lemi || r.emi_band === p.lemi) &&
       (!p.lcycle || r.cycle === p.lcycle);
     return leads.filter(lkeep).sort((a, b) => b.calls - a.calls || (a.last_date < b.last_date ? 1 : -1)).slice(0, 300);
+  },
+});
+
+
+dash.calc('lead_by_agent', {
+  title: 'Lead results by agent',
+  description: 'For each agent: how many leads they called and what share of those leads they reached, got a promise from and saw paid, on their own calls. Follows the page filters and the lead tab’s filters.',
+  inputs: ['calls', 'leads'],
+  fn: (calls, leads) => {
+    const p = dash.params();
+    const keep = (r) => (!p.ctype || (r.campaign != null && (r.campaign.startsWith('PDM') ? 'Awareness' : 'Collection') === p.ctype)) &&
+      (!p.week || r.week === p.week) &&
+      (!p.agent || r.agent === p.agent) &&
+      (!p.lang || r.lang === p.lang) &&
+      (!p.campaign || r.campaign === p.campaign) &&
+      (!p.outcome || r.outcome === p.outcome) &&
+      (!p.intent || r.intent === p.intent) &&
+      (!p.cap || r.cap === p.cap) &&
+      (!p.reason || r.reason === p.reason) &&
+      (!p.rsub || r.rsub === p.rsub) &&
+      (!p.sent || r.sent === p.sent) &&
+      (!p.attend || r.attend === p.attend) &&
+      (!p.dband || r.dband === p.dband) &&
+      (!p.flag || r[p.flag] === 1) &&
+      (!p.param || r[p.param] === 0 || r[p.param] === 2);
+    const lkeep = (r) => (!p.lstatus || r.best === p.lstatus) &&
+      (!p.latt || r.att_band === p.latt) &&
+      (!p.lprod || r.prod === p.lprod) &&
+      (!p.lemi || r.emi_band === p.lemi) &&
+      (!p.lcycle || r.cycle === p.lcycle);
+    const ok = new Set(leads.filter(lkeep).map((l) => l.lan));
+    const PROM = new Set(['Promise To Pay', 'Penal PTP', 'NACH PTP', 'Will Clear', 'Payment Done']);
+    const g = new Map();
+    for (const r of calls) {
+      if (r.lan == null || !ok.has(r.lan) || !keep(r)) continue;
+      let a = g.get(r.agent);
+      if (!a) g.set(r.agent, a = { leads: new Set(), reached: new Set(), promised: new Set(), paid: new Set(), calls: 0 });
+      a.leads.add(r.lan); a.calls++;
+      if (r.act) a.reached.add(r.lan);
+      if (r.act && PROM.has(r.outcome)) a.promised.add(r.lan);
+      if (r.act && r.outcome === 'Payment Done') a.paid.add(r.lan);
+    }
+    const pc = (x, y) => (y ? Math.round(1000 * x / y) / 10 : null);
+    return [...g].map(([agent, a]) => ({ agent, leads: a.leads.size, calls_per_lead: Math.round(100 * a.calls / a.leads.size) / 100,
+      reached_pct: pc(a.reached.size, a.leads.size), promised_pct: pc(a.promised.size, a.leads.size), paid: a.paid.size,
+      paid_pct: pc(a.paid.size, a.leads.size) })).sort((x, y) => y.leads - x.leads);
   },
 });

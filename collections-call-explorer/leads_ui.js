@@ -19,7 +19,6 @@
     dash.setParams(Object.fromEntries(Object.keys(LKEYS).map((k) => [k, null])));
   }));
   document.querySelectorAll('.cg-tab').forEach((t) => t.addEventListener('click', () => { dash.draw('lbar'); dash.draw('lchips'); }));
-  window.addEventListener('beforeprint', () => { dash.draw('lbar'); dash.draw('lchips'); });
   sync();
 
   dash.draw('lchips', (el) => {
