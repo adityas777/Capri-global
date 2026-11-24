@@ -57,6 +57,9 @@
   const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   const date = (v) => v.slice(8) + ' ' + MON[+v.slice(5, 7) - 1] + ' ' + v.slice(0, 4);
   const STEP = 100;
+  const PNAME = { p_open: 'Avoid Delay in Opening', p_greet: 'Greeting & Introduction', p_purpose: 'Purpose of the Call', p_queries: 'Did the Agent Understand & Address All Customer Queries/Concerns?', p_info: 'Complete & Correct Information Provided', p_probe: 'Necessary Probing Done', p_objection: 'Ownership & Effective Objection Handling', p_tone: 'Tone, Articulation, Professional Language, ROS', p_listen: 'Active Listening', p_empathy: 'Empathy / Apology / Personalization / Acknowledgement', p_hold: 'Dead Air/Hold/Conference Procedure Followed', p_dispo: 'Correct Disposition Tagged', p_proactive: 'Demonstrated Proactive Effort to Drive Desired Action', p_closing: 'Closing', p_ethics: 'ZT - Adherence of Conduct & Ethics', p_datasec: 'Data Security / Non-Disclosure Breached', p_aprof: 'Agent Profanity' };
+  const PREFIX = { freason: 'Fatal on ', fagent: 'Fatal calls of ', fsup: 'Fatal calls under ', nfail: 'Non-fatal calls that failed ', nagent: 'Non-fatal calls of ', nsup: 'Non-fatal calls under ' };
+  const labelOf = (pr) => (PREFIX[pr.pwdim] || '') + (PNAME[pr.pwcat] || pr.pwcat);
   let shown = STEP, lastKey = '';
   const pick = (dim, cat) => {
     const p = dash.params();
@@ -83,12 +86,12 @@
     const rowH = 30, H = rows.length * rowH + 4;
     el.replaceChildren();
     const svg = d3.select(el).append('svg').attr('width', W).attr('height', H).attr('role', 'img').attr('aria-label', el.dataset.aria || 'Bar chart');
-    const lab = svg.append('g').selectAll('text').data(rows).join('text').attr('class', 'cg-lab').classed('cg-lab-on', (d) => d.category === sel)
+    const lab = svg.append('g').selectAll('text').data(rows).join('text').attr('class', 'cg-lab').classed('cg-lab-on', (d) => (d.key ?? d.category) === sel)
       .attr('y', (d, i) => i * rowH + rowH / 2 + 4).text((d) => d.category);
     const maxLab = Math.max(80, Math.min(W * 0.42, 230));
     lab.each(function () { let s = this.textContent; while (this.getComputedTextLength() > maxLab && s.length > 4) { s = s.slice(0, -2); this.textContent = s + '…'; } });
     const lw = Math.min(maxLab, d3.max(lab.nodes(), (n) => n.getComputedTextLength()) || 60);
-    const vt = (d) => IN(d.calls) + '  ·  ' + (+d.share).toFixed(1) + '%';
+    const vt = (d) => IN(d.calls) + (d.share == null ? '' : '  ·  ' + (+d.share).toFixed(2) + '%');
     const probe = svg.append('text').attr('class', 'cg-val').text(rows.map(vt).reduce((a, b) => (b.length > a.length ? b : a), ''));
     const vw = probe.node().getComputedTextLength() + 10; probe.remove();
     const x0 = lw + 10;
@@ -96,15 +99,15 @@
     svg.append('g').selectAll('rect').data(rows).join('rect').attr('class', 'cg-track')
       .attr('x', x0).attr('y', (d, i) => i * rowH + 7).attr('height', rowH - 14).attr('rx', 3).attr('width', x.range()[1]);
     svg.append('g').selectAll('rect').data(rows).join('rect').attr('x', x0).attr('y', (d, i) => i * rowH + 7)
-      .attr('height', rowH - 14).attr('rx', 3).attr('width', (d) => Math.max(1, x(d.calls))).style('fill', dash.colors[0])
-      .style('opacity', (d) => (sel && d.category !== sel ? 0.3 : 1));
+      .attr('height', rowH - 14).attr('rx', 3).attr('width', (d) => Math.max(1, x(d.calls))).style('fill', el.dataset.color === 'bad' ? 'var(--color-bad)' : dash.colors[0])
+      .style('opacity', (d) => (sel && (d.key ?? d.category) !== sel ? 0.3 : 1));
     svg.append('g').selectAll('text').data(rows).join('text').attr('class', 'cg-val')
       .attr('x', (d) => x0 + x(d.calls) + 6).attr('y', (d, i) => i * rowH + rowH / 2 + 4).text(vt);
     const tip = document.createElement('div'); tip.className = 'cg-tip'; tip.hidden = true; el.appendChild(tip);
     svg.append('g').selectAll('rect').data(rows).join('rect').attr('class', 'cg-hit cg-click')
       .attr('x', 0).attr('y', (d, i) => i * rowH).attr('width', W).attr('height', rowH)
       .on('pointermove', (ev, d) => {
-        const lines = [[String(d.category)], ['Calls', IN(d.calls)], ['Share of calls', (+d.share).toFixed(1) + '%'], ['', d.category === sel ? 'Click to close the call list' : 'Click to list these calls']];
+        const lines = [[String(d.category)], ['Calls', IN(d.calls)], [el.dataset.sharelabel || 'Share of calls', d.share == null ? '—' : (+d.share).toFixed(2) + '%'], ['', (d.key ?? d.category) === sel ? 'Click to close the call list' : 'Click to list these calls']];
         tip.replaceChildren(...lines.map((l, i) => {
           const dv = document.createElement('div');
           if (i === 0) { dv.className = 'cg-tip-h'; dv.textContent = l[0]; return dv; }
@@ -118,7 +121,7 @@
         tip.style.left = tx + 'px'; tip.style.top = ty + 'px';
       })
       .on('pointerleave', () => { tip.hidden = true; })
-      .on('click', (ev, d) => { tip.hidden = true; pick(dim, d.category); });
+      .on('click', (ev, d) => { tip.hidden = true; pick(dim, d.key ?? d.category); });
   });
 
   dash.draw('pwcalls', (el) => {
@@ -132,13 +135,13 @@
     const rows = g.data;
     const head = document.createElement('div'); head.className = 'cg-pwcalls-h';
     const t = document.createElement('span');
-    t.textContent = IN(rows.length) + ' call' + (rows.length === 1 ? '' : 's') + ' in “' + pr.pwcat + '”, newest first. Click a call ID to open it in Greylabs.';
+    t.textContent = IN(rows.length) + ' call' + (rows.length === 1 ? '' : 's') + ' in “' + labelOf(pr) + '”, newest first. Click a call ID to open it in Greylabs.';
     const close = document.createElement('button'); close.type = 'button'; close.className = 'cg-linkbtn'; close.textContent = 'Close list';
     close.addEventListener('click', () => dash.setParams({ pwdim: null, pwcat: null }));
     head.append(t, close);
     const table = document.createElement('table'); table.className = 'cg-table cg-compact';
     const hr = document.createElement('tr');
-    for (const h of ['Call', 'Date', 'Hour', 'Agent', 'Campaign', 'Outcome', 'Score', 'Fatal', 'Duration']) {
+    for (const h of ['Call', 'Date', 'Hour', 'Agent', 'Campaign', 'Outcome', 'Score', 'Fatal', 'Fatal on', 'Duration']) {
       const th = document.createElement('th'); th.textContent = h; if (['Score', 'Duration'].includes(h)) th.className = 'cg-num'; hr.appendChild(th);
     }
     const thead = document.createElement('thead'); thead.appendChild(hr);
@@ -149,8 +152,8 @@
       const a = document.createElement('a'); a.href = 'https://app.greylabs.ai/call-details/' + encodeURIComponent(r.id);
       a.target = '_blank'; a.rel = 'noopener noreferrer'; a.className = 'cg-calllink'; a.textContent = r.id + ' ↗'; a.title = 'Open this call in Greylabs';
       c0.appendChild(a); tr.appendChild(c0);
-      const vals = [date(r.date), r.hour, r.agent, r.campaign || '—', r.outcome, r.score == null ? '—' : (+r.score).toFixed(2), r.fatal, IN(r.dur) + 's'];
-      vals.forEach((v, i) => { const td = document.createElement('td'); td.textContent = v; if (i === 5 || i === 7) td.className = 'cg-num'; tr.appendChild(td); });
+      const vals = [date(r.date), r.hour, r.agent, r.campaign || '—', r.outcome, r.score == null ? '—' : (+r.score).toFixed(2), r.fatal, r.fatal_on || '—', IN(r.dur) + 's'];
+      vals.forEach((v, i) => { const td = document.createElement('td'); td.textContent = v; if (i === 5 || i === 8) td.className = 'cg-num'; if (i === 7) td.className = 'cg-wrap'; tr.appendChild(td); });
       tb.appendChild(tr);
     }
     table.append(thead, tb);

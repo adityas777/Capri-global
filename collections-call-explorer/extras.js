@@ -1,7 +1,7 @@
 // Attendance tiles, lead-wise trend chart and agent-wise trend table
 (function () {
   const IN = (n) => Number(n).toLocaleString('en-IN');
-  const fmt = (v, k) => (v === null || v === undefined ? '—' : k === 'pct' ? (+v).toFixed(1) + '%' : k === 'score' ? (+v).toFixed(2) : IN(Math.round(v)));
+  const fmt = (v, k) => (v === null || v === undefined ? '—' : k === 'pct' ? (+v).toFixed(2) + '%' : k === 'score' ? (+v).toFixed(2) : IN(Math.round(v)));
   const ST = (window.CGX = { hm: 'avg_score' });
   const toggle = (k, v) => { const p = dash.params(); dash.setParams({ [k]: p[k] === v ? null : v }); };
 
@@ -144,7 +144,7 @@
         const good = higherBetter == null || r.change === 0 ? '' : (r.change > 0) === higherBetter ? 'ok' : 'bad';
         s.className = 'cg-pill' + (good ? ' cg-' + good : '');
         const a = Math.abs(r.change);
-        s.textContent = (r.change > 0 ? '+' : r.change < 0 ? '−' : '') + (f === 'pct' ? a.toFixed(1) + ' pts' : f === 'score' ? a.toFixed(2) : IN(a));
+        s.textContent = (r.change > 0 ? '+' : r.change < 0 ? '−' : '') + (f === 'pct' ? a.toFixed(2) + ' pts' : f === 'score' ? a.toFixed(2) : IN(a));
         tc.appendChild(s);
       }
       tr.appendChild(tc);

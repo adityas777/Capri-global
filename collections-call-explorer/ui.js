@@ -2,7 +2,7 @@
 (function () {
   const IN = (n) => Number(n).toLocaleString('en-IN');
   const F = {
-    int: (v) => IN(Math.round(v)), pct: (v) => (+v).toFixed(1) + '%', score: (v) => (+v).toFixed(2),
+    int: (v) => IN(Math.round(v)), pct: (v) => (+v).toFixed(2) + '%', score: (v) => (+v).toFixed(2),
     sec: (v) => IN(v) + 's', inr: (v) => '₹' + IN(v),
     date: (v) => d3.utcFormat('%d %b %Y')(new Date(v + 'T00:00:00Z')), text: (v) => String(v),
   };

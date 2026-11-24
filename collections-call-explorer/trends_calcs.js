@@ -30,7 +30,7 @@ dash.calc('agent_week', {
       if (!o) g.set(k, o = { agent: r.agent, week: r.week, n: 0, s: 0, f: 0, ptp: 0 });
       o.n++; o.s += r.score || 0; if (r.fatal) o.f++; if (PTP.has(r.outcome)) o.ptp++;
     }
-    const pc = (x, y) => (y ? Math.round(1000 * x / y) / 10 : null);
+    const pc = (x, y) => (y ? Math.round(10000 * x / y) / 100 : null);
     return [...g.values()].map((o) => ({ agent: o.agent, week: o.week, connected: o.n, avg_score: Math.round(100 * o.s / o.n) / 100,
       fatal_rate: pc(o.f, o.n), ptp_rate: pc(o.ptp, o.n) })).sort((a, b) => (a.agent < b.agent ? -1 : a.agent > b.agent ? 1 : a.week < b.week ? -1 : 1));
   },
@@ -92,7 +92,7 @@ dash.calc('coach', {
         if (v === 2) o.pf[id] = (o.pf[id] || 0) + 1;
       }
     }
-    const pc = (x, y) => (y ? Math.round(1000 * x / y) / 10 : null);
+    const pc = (x, y) => (y ? Math.round(10000 * x / y) / 100 : null);
     const rows = [];
     for (const [agent, o] of g) {
       if (o.n < 30) continue;
@@ -111,13 +111,17 @@ dash.calc('coach', {
 
 dash.calc('insights', {
   title: 'November observations',
-  description: 'Fixed figures for the observations text, worked out from every November call; the page filters do not change them.',
+  description: 'Fixed figures for the observations text, worked out from every November call; the page filters do not change them. Week comparisons use full weeks (3+ calling days); wrong-disposition fatal calls use the audit’s fatal reason.',
   inputs: ['calls'],
   fn: (calls) => {
     const PTP = new Set(['Promise To Pay', 'Penal PTP', 'NACH PTP']);
     const PROM = new Set(['Promise To Pay', 'Penal PTP', 'NACH PTP', 'Will Clear', 'Payment Done']);
-    const pc = (x, y) => (y ? Math.round(1000 * x / y) / 10 : null);
-    const weeks = [...new Set(calls.map((r) => r.week))].sort();
+    const pc = (x, y) => (y ? Math.round(10000 * x / y) / 100 : null);
+    const allWeeks = [...new Set(calls.map((r) => r.week))].sort();
+    // compare full weeks only: a week counts as full when it has at least 3 calling days
+    const daysIn = {};
+    for (const r of calls) (daysIn[r.week] ??= new Set()).add(r.date);
+    const weeks = allWeeks.filter((w) => daysIn[w].size >= 3);
     const W = {}, A = {}, D = { u1: [0, 0, 0, 0], m12: [0, 0, 0, 0], o2: [0, 0, 0, 0] }, P = {}, L = new Map(), AG = {};
     let fat = 0, dispoFat = 0;
     for (const r of calls) {
@@ -138,7 +142,7 @@ dash.calc('insights', {
       const b = r.dur < 60 ? D.u1 : r.dur < 120 ? D.m12 : D.o2;
       b[0]++; if (PTP.has(r.outcome)) b[1]++; if (r.fatal) b[2]++; b[3] += r.score || 0;
       if (r.fatal) fat++;
-      if (r.p_dispo === 2) dispoFat++;
+      if (r.fatal && r.freason != null && r.freason.split('|').includes('p_dispo')) dispoFat++;
       for (const id of ['p_closing', 'p_empathy', 'p_info', 'p_greet']) if (r[id] != null) { const q = (P[id] ??= [0, 0]); q[0]++; if (r[id] === 1) q[1]++; }
     }
     const f = W[weeks[0]], l = W[weeks[weeks.length - 1]];

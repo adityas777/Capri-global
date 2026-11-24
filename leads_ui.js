@@ -1,7 +1,7 @@
 // Lead-wise tab: its own bar charts, measure toggle and filter chips
 (function () {
   const IN = (n) => Number(n).toLocaleString('en-IN');
-  const fmt = (v, k) => (v === null || v === undefined || v === '' ? '—' : k === 'pct' ? (+v).toFixed(1) + '%' : k === 'dec' ? (+v).toFixed(2) : IN(Math.round(v)));
+  const fmt = (v, k) => (v === null || v === undefined || v === '' ? '—' : k === 'pct' ? (+v).toFixed(2) + '%' : k === 'dec' ? (+v).toFixed(2) : IN(Math.round(v)));
   const LM = {
     leads: { field: 'leads', f: 'int', label: 'Leads' }, reached_pct: { field: 'reached_pct', f: 'pct', label: 'Reached' },
     promised_pct: { field: 'promised_pct', f: 'pct', label: 'Promised / will clear' }, paid_pct: { field: 'paid_pct', f: 'pct', label: 'Paid' },
@@ -19,6 +19,7 @@
     dash.setParams(Object.fromEntries(Object.keys(LKEYS).map((k) => [k, null])));
   }));
   document.querySelectorAll('.cg-tab').forEach((t) => t.addEventListener('click', () => { dash.draw('lbar'); dash.draw('lchips'); }));
+  window.addEventListener('beforeprint', () => { dash.draw('lbar'); dash.draw('lchips'); });
   sync();
 
   dash.draw('lchips', (el) => {

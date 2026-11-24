@@ -79,7 +79,7 @@ dash.calc('lead_kpis', {
       if (r.paid) paid++;
       if (r.agents > 1) multi++;
     }
-    const pc = (x, y) => (y ? Math.round(1000 * x / y) / 10 : null);
+    const pc = (x, y) => (y ? Math.round(10000 * x / y) / 100 : null);
     return [{ leads: n, reached: reached, reached_pct: pc(reached, n), promised: promised, promised_pct: pc(promised, n),
       paid: paid, paid_pct: pc(paid, n), calls_per_lead: n ? Math.round(100 * calls / n) / 100 : null,
       calls_to_connect: tcn ? Math.round(100 * tc / tcn) / 100 : null, multi_agent_pct: pc(multi, n) }];
@@ -106,7 +106,7 @@ dash.calc('lead_funnel', {
       if (r.paid) c[3]++;
     }
     const names = ['Leads called', 'Reached (connected call)', 'Promised to pay / will clear', 'Paid'];
-    return names.map((stage, i) => ({ stage, leads: c[i], share: c[0] ? Math.round(1000 * c[i] / c[0]) / 10 : null }));
+    return names.map((stage, i) => ({ stage, leads: c[i], share: c[0] ? Math.round(10000 * c[i] / c[0]) / 100 : null }));
   },
 });
 
@@ -133,7 +133,7 @@ dash.calc('lead_by_status', {
       if (r.promised || r.paid) o.promised++;
       if (r.paid) o.paid++;
     }
-    const pc = (x, y) => (y ? Math.round(1000 * x / y) / 10 : null);
+    const pc = (x, y) => (y ? Math.round(10000 * x / y) / 100 : null);
     const rows = [...g].map(([v, o]) => ({ status: v, leads: o.n, share: pc(o.n, total), reached_pct: pc(o.reached, o.n),
       promised_pct: pc(o.promised, o.n), paid_pct: pc(o.paid, o.n), calls_per_lead: Math.round(100 * o.calls / o.n) / 100 }));
     return ORDER ? rows.sort((a, b) => ORDER.indexOf(a.status) - ORDER.indexOf(b.status)) : rows.sort((a, b) => b.leads - a.leads);
@@ -163,7 +163,7 @@ dash.calc('lead_by_attempts', {
       if (r.promised || r.paid) o.promised++;
       if (r.paid) o.paid++;
     }
-    const pc = (x, y) => (y ? Math.round(1000 * x / y) / 10 : null);
+    const pc = (x, y) => (y ? Math.round(10000 * x / y) / 100 : null);
     const rows = [...g].map(([v, o]) => ({ attempts: v, leads: o.n, share: pc(o.n, total), reached_pct: pc(o.reached, o.n),
       promised_pct: pc(o.promised, o.n), paid_pct: pc(o.paid, o.n), calls_per_lead: Math.round(100 * o.calls / o.n) / 100 }));
     return ORDER ? rows.sort((a, b) => ORDER.indexOf(a.attempts) - ORDER.indexOf(b.attempts)) : rows.sort((a, b) => b.leads - a.leads);
@@ -193,7 +193,7 @@ dash.calc('lead_by_product', {
       if (r.promised || r.paid) o.promised++;
       if (r.paid) o.paid++;
     }
-    const pc = (x, y) => (y ? Math.round(1000 * x / y) / 10 : null);
+    const pc = (x, y) => (y ? Math.round(10000 * x / y) / 100 : null);
     const rows = [...g].map(([v, o]) => ({ product: v, leads: o.n, share: pc(o.n, total), reached_pct: pc(o.reached, o.n),
       promised_pct: pc(o.promised, o.n), paid_pct: pc(o.paid, o.n), calls_per_lead: Math.round(100 * o.calls / o.n) / 100 }));
     return ORDER ? rows.sort((a, b) => ORDER.indexOf(a.product) - ORDER.indexOf(b.product)) : rows.sort((a, b) => b.leads - a.leads);
@@ -223,7 +223,7 @@ dash.calc('lead_by_emi_band', {
       if (r.promised || r.paid) o.promised++;
       if (r.paid) o.paid++;
     }
-    const pc = (x, y) => (y ? Math.round(1000 * x / y) / 10 : null);
+    const pc = (x, y) => (y ? Math.round(10000 * x / y) / 100 : null);
     const rows = [...g].map(([v, o]) => ({ emi_band: v, leads: o.n, share: pc(o.n, total), reached_pct: pc(o.reached, o.n),
       promised_pct: pc(o.promised, o.n), paid_pct: pc(o.paid, o.n), calls_per_lead: Math.round(100 * o.calls / o.n) / 100 }));
     return ORDER ? rows.sort((a, b) => ORDER.indexOf(a.emi_band) - ORDER.indexOf(b.emi_band)) : rows.sort((a, b) => b.leads - a.leads);
@@ -253,7 +253,7 @@ dash.calc('lead_by_cycle', {
       if (r.promised || r.paid) o.promised++;
       if (r.paid) o.paid++;
     }
-    const pc = (x, y) => (y ? Math.round(1000 * x / y) / 10 : null);
+    const pc = (x, y) => (y ? Math.round(10000 * x / y) / 100 : null);
     const rows = [...g].map(([v, o]) => ({ cycle: v, leads: o.n, share: pc(o.n, total), reached_pct: pc(o.reached, o.n),
       promised_pct: pc(o.promised, o.n), paid_pct: pc(o.paid, o.n), calls_per_lead: Math.round(100 * o.calls / o.n) / 100 }));
     return ORDER ? rows.sort((a, b) => ORDER.indexOf(a.cycle) - ORDER.indexOf(b.cycle)) : rows.sort((a, b) => b.leads - a.leads);
@@ -314,7 +314,7 @@ dash.calc('lead_by_agent', {
       if (r.act && PROM.has(r.outcome)) a.promised.add(r.lan);
       if (r.act && r.outcome === 'Payment Done') a.paid.add(r.lan);
     }
-    const pc = (x, y) => (y ? Math.round(1000 * x / y) / 10 : null);
+    const pc = (x, y) => (y ? Math.round(10000 * x / y) / 100 : null);
     return [...g].map(([agent, a]) => ({ agent, leads: a.leads.size, calls_per_lead: Math.round(100 * a.calls / a.leads.size) / 100,
       reached_pct: pc(a.reached.size, a.leads.size), promised_pct: pc(a.promised.size, a.leads.size), paid: a.paid.size,
       paid_pct: pc(a.paid.size, a.leads.size) })).sort((x, y) => y.leads - x.leads);

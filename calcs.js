@@ -40,7 +40,7 @@ dash.calc('kpis', {
     }
     amts.sort((x, y) => x - y);
     const med = amts.length ? (amts.length % 2 ? amts[(amts.length - 1) / 2] : Math.round((amts[amts.length / 2 - 1] + amts[amts.length / 2]) / 2)) : null;
-    const pc = (x, y) => (y ? Math.round(1000 * x / y) / 10 : null);
+    const pc = (x, y) => (y ? Math.round(10000 * x / y) / 100 : null);
     return [{ calls: n, connected: a, connect_rate: pc(a, n), avg_score: a ? Math.round(100 * ss / a) / 100 : null,
       fatal_calls: fat, fatal_rate: pc(fat, a), ptp_calls: ptp, ptp_rate: pc(ptp, a), payment_done: paid, will_clear: wc,
       refused: rtp, high_intent_pct: pc(hi, a), median_ptp_amount: med, agents: agents.size, leads: leads.size,
@@ -72,7 +72,7 @@ dash.calc('trend', {
     const PTP = new Set(['Promise To Pay', 'Penal PTP', 'NACH PTP']);
     const PIDS = ['p_open', 'p_greet', 'p_purpose', 'p_queries', 'p_info', 'p_probe', 'p_objection', 'p_tone', 'p_listen', 'p_empathy', 'p_hold', 'p_dispo', 'p_proactive', 'p_closing', 'p_ethics', 'p_datasec', 'p_aprof'];
     const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const pc = (x, y) => (y ? Math.round(1000 * x / y) / 10 : null);
+    const pc = (x, y) => (y ? Math.round(10000 * x / y) / 100 : null);
     const groups = { day: new Map(), week: new Map(), hour: new Map() };
     for (const r of calls) {
       if (!keep(r)) continue;
@@ -142,7 +142,7 @@ dash.calc('by_week', {
       o.n++; total++;
       if (r.act) { o.a++; o.ss += r.score || 0; if (PTP.has(r.outcome)) o.ptp++; if (r.fatal) o.fat++; }
     }
-    const pc = (x, y) => (y ? Math.round(1000 * x / y) / 10 : null);
+    const pc = (x, y) => (y ? Math.round(10000 * x / y) / 100 : null);
     return [...g].map(([k, o]) => ({ week: k, calls: o.n, share: pc(o.n, total), connected: o.a, ptp_rate: pc(o.ptp, o.a),
       fatal_rate: pc(o.fat, o.a), avg_score: o.a ? Math.round(100 * o.ss / o.a) / 100 : null })).sort((x, y) => y.calls - x.calls);
   },
@@ -179,7 +179,7 @@ dash.calc('by_agent', {
       o.n++; total++;
       if (r.act) { o.a++; o.ss += r.score || 0; if (PTP.has(r.outcome)) o.ptp++; if (r.fatal) o.fat++; }
     }
-    const pc = (x, y) => (y ? Math.round(1000 * x / y) / 10 : null);
+    const pc = (x, y) => (y ? Math.round(10000 * x / y) / 100 : null);
     return [...g].map(([k, o]) => ({ agent: k, calls: o.n, share: pc(o.n, total), connected: o.a, ptp_rate: pc(o.ptp, o.a),
       fatal_rate: pc(o.fat, o.a), avg_score: o.a ? Math.round(100 * o.ss / o.a) / 100 : null })).sort((x, y) => y.calls - x.calls);
   },
@@ -216,7 +216,7 @@ dash.calc('by_lang', {
       o.n++; total++;
       if (r.act) { o.a++; o.ss += r.score || 0; if (PTP.has(r.outcome)) o.ptp++; if (r.fatal) o.fat++; }
     }
-    const pc = (x, y) => (y ? Math.round(1000 * x / y) / 10 : null);
+    const pc = (x, y) => (y ? Math.round(10000 * x / y) / 100 : null);
     return [...g].map(([k, o]) => ({ lang: k, calls: o.n, share: pc(o.n, total), connected: o.a, ptp_rate: pc(o.ptp, o.a),
       fatal_rate: pc(o.fat, o.a), avg_score: o.a ? Math.round(100 * o.ss / o.a) / 100 : null })).sort((x, y) => y.calls - x.calls);
   },
@@ -253,7 +253,7 @@ dash.calc('by_campaign', {
       o.n++; total++;
       if (r.act) { o.a++; o.ss += r.score || 0; if (PTP.has(r.outcome)) o.ptp++; if (r.fatal) o.fat++; }
     }
-    const pc = (x, y) => (y ? Math.round(1000 * x / y) / 10 : null);
+    const pc = (x, y) => (y ? Math.round(10000 * x / y) / 100 : null);
     return [...g].map(([k, o]) => ({ campaign: k, calls: o.n, share: pc(o.n, total), connected: o.a, ptp_rate: pc(o.ptp, o.a),
       fatal_rate: pc(o.fat, o.a), avg_score: o.a ? Math.round(100 * o.ss / o.a) / 100 : null })).sort((x, y) => y.calls - x.calls);
   },
@@ -290,7 +290,7 @@ dash.calc('by_outcome', {
       o.n++; total++;
       if (r.act) { o.a++; o.ss += r.score || 0; if (PTP.has(r.outcome)) o.ptp++; if (r.fatal) o.fat++; }
     }
-    const pc = (x, y) => (y ? Math.round(1000 * x / y) / 10 : null);
+    const pc = (x, y) => (y ? Math.round(10000 * x / y) / 100 : null);
     return [...g].map(([k, o]) => ({ outcome: k, calls: o.n, share: pc(o.n, total), connected: o.a, ptp_rate: pc(o.ptp, o.a),
       fatal_rate: pc(o.fat, o.a), avg_score: o.a ? Math.round(100 * o.ss / o.a) / 100 : null })).sort((x, y) => y.calls - x.calls);
   },
@@ -327,7 +327,7 @@ dash.calc('by_intent', {
       o.n++; total++;
       if (r.act) { o.a++; o.ss += r.score || 0; if (PTP.has(r.outcome)) o.ptp++; if (r.fatal) o.fat++; }
     }
-    const pc = (x, y) => (y ? Math.round(1000 * x / y) / 10 : null);
+    const pc = (x, y) => (y ? Math.round(10000 * x / y) / 100 : null);
     return [...g].map(([k, o]) => ({ intent: k, calls: o.n, share: pc(o.n, total), connected: o.a, ptp_rate: pc(o.ptp, o.a),
       fatal_rate: pc(o.fat, o.a), avg_score: o.a ? Math.round(100 * o.ss / o.a) / 100 : null })).sort((x, y) => y.calls - x.calls);
   },
@@ -364,7 +364,7 @@ dash.calc('by_cap', {
       o.n++; total++;
       if (r.act) { o.a++; o.ss += r.score || 0; if (PTP.has(r.outcome)) o.ptp++; if (r.fatal) o.fat++; }
     }
-    const pc = (x, y) => (y ? Math.round(1000 * x / y) / 10 : null);
+    const pc = (x, y) => (y ? Math.round(10000 * x / y) / 100 : null);
     return [...g].map(([k, o]) => ({ cap: k, calls: o.n, share: pc(o.n, total), connected: o.a, ptp_rate: pc(o.ptp, o.a),
       fatal_rate: pc(o.fat, o.a), avg_score: o.a ? Math.round(100 * o.ss / o.a) / 100 : null })).sort((x, y) => y.calls - x.calls);
   },
@@ -401,7 +401,7 @@ dash.calc('by_reason', {
       o.n++; total++;
       if (r.act) { o.a++; o.ss += r.score || 0; if (PTP.has(r.outcome)) o.ptp++; if (r.fatal) o.fat++; }
     }
-    const pc = (x, y) => (y ? Math.round(1000 * x / y) / 10 : null);
+    const pc = (x, y) => (y ? Math.round(10000 * x / y) / 100 : null);
     return [...g].map(([k, o]) => ({ reason: k, calls: o.n, share: pc(o.n, total), connected: o.a, ptp_rate: pc(o.ptp, o.a),
       fatal_rate: pc(o.fat, o.a), avg_score: o.a ? Math.round(100 * o.ss / o.a) / 100 : null })).sort((x, y) => y.calls - x.calls);
   },
@@ -438,7 +438,7 @@ dash.calc('by_rsub', {
       o.n++; total++;
       if (r.act) { o.a++; o.ss += r.score || 0; if (PTP.has(r.outcome)) o.ptp++; if (r.fatal) o.fat++; }
     }
-    const pc = (x, y) => (y ? Math.round(1000 * x / y) / 10 : null);
+    const pc = (x, y) => (y ? Math.round(10000 * x / y) / 100 : null);
     return [...g].map(([k, o]) => ({ rsub: k, calls: o.n, share: pc(o.n, total), connected: o.a, ptp_rate: pc(o.ptp, o.a),
       fatal_rate: pc(o.fat, o.a), avg_score: o.a ? Math.round(100 * o.ss / o.a) / 100 : null })).sort((x, y) => y.calls - x.calls);
   },
@@ -475,7 +475,7 @@ dash.calc('by_sent', {
       o.n++; total++;
       if (r.act) { o.a++; o.ss += r.score || 0; if (PTP.has(r.outcome)) o.ptp++; if (r.fatal) o.fat++; }
     }
-    const pc = (x, y) => (y ? Math.round(1000 * x / y) / 10 : null);
+    const pc = (x, y) => (y ? Math.round(10000 * x / y) / 100 : null);
     return [...g].map(([k, o]) => ({ sent: k, calls: o.n, share: pc(o.n, total), connected: o.a, ptp_rate: pc(o.ptp, o.a),
       fatal_rate: pc(o.fat, o.a), avg_score: o.a ? Math.round(100 * o.ss / o.a) / 100 : null })).sort((x, y) => y.calls - x.calls);
   },
@@ -513,7 +513,7 @@ dash.calc('by_param', {
         if (v === 1) o[id].pass++; else if (v === 2) o[id].fat++; else o[id].fail++;
       }
     }
-    const pc = (x, y) => (y ? Math.round(1000 * x / y) / 10 : null);
+    const pc = (x, y) => (y ? Math.round(10000 * x / y) / 100 : null);
     return Object.keys(LABELS).map((id) => ({ param: id, parameter: LABELS[id], assessed: o[id].a, passed: o[id].pass,
       failed: o[id].fail, fatal: o[id].fat, pass_rate: pc(o[id].pass, o[id].a) })).sort((x, y) => (x.pass_rate ?? 101) - (y.pass_rate ?? 101));
   },
@@ -548,7 +548,7 @@ dash.calc('by_flag', {
       a++;
       for (const id in LABELS) if (r[id] === 1) c[id]++;
     }
-    return Object.keys(LABELS).map((id) => ({ flag: id, label: LABELS[id], calls: c[id], share: a ? Math.round(1000 * c[id] / a) / 10 : null }))
+    return Object.keys(LABELS).map((id) => ({ flag: id, label: LABELS[id], calls: c[id], share: a ? Math.round(10000 * c[id] / a) / 100 : null }))
       .sort((x, y) => y.calls - x.calls);
   },
 });
@@ -579,72 +579,10 @@ dash.calc('attendance', {
       if (r.attend === 'Attended') att++; else if (r.attend === 'Not attended') not++;
       if (r.dband === 'Under 1 min') u1++; else if (r.dband === '1–2 min') m12++; else if (r.dband === '2 min and over') o2++;
     }
-    const pc = (x, y) => (y ? Math.round(1000 * x / y) / 10 : null);
+    const pc = (x, y) => (y ? Math.round(10000 * x / y) / 100 : null);
     return [{ calls: n, attended: att, attended_pct: pc(att, n), not_attended: not, not_attended_pct: pc(not, n),
       unknown: n - att - not, under_1min: u1, under_1min_pct: pc(u1, att), min_1_2: m12, min_1_2_pct: pc(m12, att),
       over_2min: o2, over_2min_pct: pc(o2, att) }];
-  },
-});
-
-dash.calc('unanalysed', {
-  title: 'Calls not analysable (selection)',
-  description: 'Why calls in the selection could not be audited.',
-  inputs: ['calls'],
-  fn: (calls) => {
-    const p = dash.params();
-    const keep = (r) => (!p.ctype || (r.campaign != null && (r.campaign.startsWith('PDM') ? 'Awareness' : 'Collection') === p.ctype)) &&
-      (!p.week || r.week === p.week) &&
-      (!p.agent || r.agent === p.agent) &&
-      (!p.lang || r.lang === p.lang) &&
-      (!p.campaign || r.campaign === p.campaign) &&
-      (!p.outcome || r.outcome === p.outcome) &&
-      (!p.intent || r.intent === p.intent) &&
-      (!p.cap || r.cap === p.cap) &&
-      (!p.reason || r.reason === p.reason) &&
-      (!p.rsub || r.rsub === p.rsub) &&
-      (!p.sent || r.sent === p.sent) &&
-      (!p.attend || r.attend === p.attend) &&
-      (!p.dband || r.dband === p.dband) &&
-      (!p.flag || r[p.flag] === 1) &&
-      (!p.param || r[p.param] === 0 || r[p.param] === 2);
-    const g = new Map();
-    for (const r of calls) if (r.unanalysed != null && keep(r)) g.set(r.unanalysed, (g.get(r.unanalysed) || 0) + 1);
-    return [...g].map(([reason, n]) => ({ reason, calls: n })).sort((x, y) => y.calls - x.calls);
-  },
-});
-
-dash.calc('call_list', {
-  title: 'Calls to review (selection)',
-  description: 'Up to 200 connected calls in the selection, fatal calls first, then lowest quality score.',
-  inputs: ['calls'],
-  fn: (calls) => {
-    const p = dash.params();
-    const keep = (r) => (!p.ctype || (r.campaign != null && (r.campaign.startsWith('PDM') ? 'Awareness' : 'Collection') === p.ctype)) &&
-      (!p.week || r.week === p.week) &&
-      (!p.agent || r.agent === p.agent) &&
-      (!p.lang || r.lang === p.lang) &&
-      (!p.campaign || r.campaign === p.campaign) &&
-      (!p.outcome || r.outcome === p.outcome) &&
-      (!p.intent || r.intent === p.intent) &&
-      (!p.cap || r.cap === p.cap) &&
-      (!p.reason || r.reason === p.reason) &&
-      (!p.rsub || r.rsub === p.rsub) &&
-      (!p.sent || r.sent === p.sent) &&
-      (!p.attend || r.attend === p.attend) &&
-      (!p.dband || r.dband === p.dband) &&
-      (!p.flag || r[p.flag] === 1) &&
-      (!p.param || r[p.param] === 0 || r[p.param] === 2);
-    const LABELS = { p_open: 'Avoid delay in opening', p_greet: 'Greeting & introduction', p_purpose: 'Purpose of the call', p_queries: 'Addressed all queries', p_info: 'Complete & correct info', p_probe: 'Necessary probing', p_objection: 'Objection handling', p_tone: 'Tone & professional language', p_listen: 'Active listening', p_empathy: 'Empathy & acknowledgement', p_hold: 'Dead air / hold procedure', p_dispo: 'Correct disposition tagged', p_proactive: 'Proactive effort', p_closing: 'Closing', p_ethics: 'Conduct & ethics (ZT)', p_datasec: 'No data-security breach', p_aprof: 'No agent profanity' };
-    const rows = [];
-    for (const r of calls) {
-      if (!r.act || !keep(r)) continue;
-      const fatalOn = Object.keys(LABELS).filter((id) => r[id] === 2).map((id) => LABELS[id]).join(', ');
-      const failedOn = Object.keys(LABELS).filter((id) => r[id] === 0).map((id) => LABELS[id]).join(', ');
-      rows.push({ id: String(r.id), date: r.date, hour: String(r.hour).padStart(2, '0') + ':00', agent: r.agent, lang: r.lang,
-        outcome: r.outcome, score: r.score, fatal: r.fatal ? 'Yes' : 'No', fatal_on: fatalOn || '—', failed_on: failedOn || '—', dur: r.dur });
-    }
-    rows.sort((x, y) => (y.fatal === 'Yes') - (x.fatal === 'Yes') || (x.score ?? 99) - (y.score ?? 99) || (x.date < y.date ? -1 : 1));
-    return rows.slice(0, 200);
   },
 });
 
