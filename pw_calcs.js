@@ -1,6 +1,6 @@
 // Parameter-wise analysis tab: call categorisation breakdowns (every call, non-actionable included)
 
-// and parameter scores out of 10 with category scores. All follow the page filters.
+// and parameter scores out of 100 with category scores. All follow the page filters.
 
 dash.calc('pw_intent', {
   title: 'Calls by payment intent',
@@ -69,8 +69,8 @@ dash.calc('pw_cap', {
 });
 
 dash.calc('pw_reason', {
-  title: 'Calls by reason for non-payment',
-  description: 'Every call in the selection by reason for non-payment; calls too short to audit show as Non-Actionable Calls. Share is of all calls in the selection.',
+  title: 'Calls by reason for non-payment, with specific reasons',
+  description: 'Every call in the selection by the main reason for non-payment, each followed by the specific reasons customers named inside it (“Other / not specified” = no specific reason). Calls too short to audit show as Non-Actionable Calls. Share is of all calls in the selection.',
   inputs: ['calls'],
   fn: (calls) => {
     const p = dash.params();
@@ -89,15 +89,26 @@ dash.calc('pw_reason', {
       (!p.dband || r.dband === p.dband) &&
       (!p.flag || r[p.flag] === 1) &&
       (!p.param || r[p.param] === 0 || r[p.param] === 2);
-    const g = new Map();
+    const cat = new Map(), sub = new Map();
     let n = 0;
     for (const r of calls) {
       if (!keep(r)) continue;
       const v = r.act ? r.reason : 'Non-Actionable Calls';
       if (v == null) continue;
-      n++; g.set(v, (g.get(v) || 0) + 1);
+      n++; cat.set(v, (cat.get(v) || 0) + 1);
+      if (r.act && r.rsub != null) { const k = v + '||' + r.rsub; sub.set(k, (sub.get(k) || 0) + 1); }
     }
-    return [...g].map(([category, c]) => ({ category, calls: c, share: n ? Math.round(10000 * c / n) / 100 : null })).sort((a, b) => b.calls - a.calls);
+    const pc = (c) => (n ? Math.round(10000 * c / n) / 100 : null);
+    const rows = [];
+    for (const [c, k] of [...cat].sort((a, b) => b[1] - a[1])) {
+      rows.push({ category: c, key: c, level: 0, calls: k, share: pc(k) });
+      const subs = [...sub].filter(([s]) => s.startsWith(c + '||')).sort((a, b) => b[1] - a[1]);
+      if (!subs.length) continue;
+      let used = 0;
+      for (const [s, m] of subs) { used += m; rows.push({ category: s.slice(c.length + 2), key: s, parent: c, level: 1, calls: m, share: pc(m) }); }
+      if (k - used > 0) rows.push({ category: 'Other / not specified', key: c + '||__rest', parent: c, level: 1, calls: k - used, share: pc(k - used) });
+    }
+    return rows;
   },
 });
 
@@ -334,7 +345,7 @@ dash.calc('pw_outcome', {
 
 dash.calc('pw_params', {
   title: 'Score of each audit parameter',
-  description: 'Average score of each scored audit parameter, out of 10. A parameter scores its full weight when passed and 0 when failed or fatal, so the score out of 10 equals the pass rate divided by 10. Ignores the parameter filter so every parameter stays visible.',
+  description: 'Average score of each scored audit parameter, out of 100. A parameter scores its full weight when passed and 0 when failed or fatal, so its score out of 100 equals its pass rate. Ignores the parameter filter so every parameter stays visible.',
   inputs: ['calls'],
   fn: (calls) => {
     const p = dash.params();
@@ -376,14 +387,14 @@ dash.calc('pw_params', {
     }
     return PARAMS.map(([id, label, weight, category]) => ({ param: id, parameter: label, category, weight, assessed: o[id].a, passed: o[id].pass,
       failed: o[id].a - o[id].pass - o[id].fat, fatal: o[id].fat,
-      score: o[id].a ? Math.round(1000 * o[id].pass / o[id].a) / 100 : null,
+      score: o[id].a ? Math.round(10000 * o[id].pass / o[id].a) / 100 : null,
       pass_rate: o[id].a ? Math.round(10000 * o[id].pass / o[id].a) / 100 : null })).sort((x, y) => (x.score ?? 11) - (y.score ?? 11));
   },
 });
 
 dash.calc('pw_categories', {
   title: 'Score of each parameter category',
-  description: 'Parameters grouped into categories; each category score (out of 10) is the points scored divided by the points available across its parameters, weighted by each parameter’s weight.',
+  description: 'Parameters grouped into categories; each category score (out of 100) is the points scored divided by the points available across its parameters, weighted by each parameter’s weight.',
   inputs: ['calls'],
   fn: (calls) => {
     const p = dash.params();
@@ -423,7 +434,7 @@ dash.calc('pw_categories', {
       if (!r.act || !keep(r)) continue;
       for (const [id, , w, c] of PARAMS) { const v = r[id]; if (v == null) continue; avail[c] = (avail[c] || 0) + w; if (v === 1) got[c] = (got[c] || 0) + w; }
     }
-    return ORDER.map((c) => ({ category: c, score: avail[c] ? Math.round(100 * 10 * (got[c] || 0) / avail[c]) / 100 : null,
+    return ORDER.map((c) => ({ category: c, score: avail[c] ? Math.round(100 * 100 * (got[c] || 0) / avail[c]) / 100 : null,
       parameters: PARAMS.filter((q) => q[3] === c).map((q) => q[1]).join('; ') }));
   },
 });
@@ -431,7 +442,7 @@ dash.calc('pw_categories', {
 
 dash.calc('pw_call_list', {
   title: 'Calls behind the clicked bar',
-  description: 'The calls behind the bar last clicked on the Parameter wise analysis tab (a categorisation, a fatal or non-fatal breakdown, or all fatal / non-fatal calls), newest first, under the page filters.',
+  description: 'The calls behind whatever was last clicked on the page (a card, tile, bar, table row or point), newest first, under the page filters.',
   inputs: ['calls'],
   fn: (calls) => {
     const p = dash.params();
@@ -462,6 +473,18 @@ dash.calc('pw_call_list', {
       fagent: (r, c) => !!r.fatal && r.agent === c, fsup: (r, c) => !!r.fatal && r.sup === c,
       nfail: (r, c) => !r.fatal && !!r.act && r[c] === 0,
       nagent: (r, c) => !r.fatal && r.agent === c, nsup: (r, c) => !r.fatal && r.sup === c,
+      rsub: (r, c) => !!r.act && r.rsub === c,
+      rsubc: (r, c) => { const [pa, su] = c.split('||'); return !!r.act && r.reason === pa && (su === '__rest' ? r.rsub == null : r.rsub === su); }, week: (r, c) => r.week === c, tweek: (r, c) => r.week === c,
+      tday: (r, c) => r.date === c, thour: (r, c) => r.hour === +String(c).slice(0, 2),
+      agent: (r, c) => r.agent === c, agent2: (r, c) => r.agent === c, coach: (r, c) => !!r.act && r.agent === c, aheat: (r, c) => !!r.act && r.agent === c,
+      campaign: (r, c) => r.campaign === c,
+      param: (r, c) => !!r.act && (r[c] === 0 || r[c] === 2), pfatal: (r, c) => r[c] === 2,
+      att: (r, c) => r.attend === c || r.dband === c,
+      kpi: (r, c) => c === 'all' ? true : c === 'connected' ? !!r.act : c === 'fatal' ? !!r.fatal
+        : c === 'ptp' ? !!r.act && ['Promise To Pay', 'Penal PTP', 'NACH PTP'].includes(r.outcome)
+        : c === 'paid' ? !!r.act && r.outcome === 'Payment Done' : c === 'willclear' ? !!r.act && r.outcome === 'Will Clear'
+        : c === 'refused' ? !!r.act && (r.outcome === 'Refuse To Pay' || r.outcome === 'Penal RTP')
+        : c === 'high' ? !!r.act && r.intent === 'High' : c === 'leads' ? r.lan != null : false,
     };
     const LABELS = { p_open: 'Avoid Delay in Opening', p_greet: 'Greeting & Introduction', p_purpose: 'Purpose of the Call', p_queries: 'Did the Agent Understand & Address All Customer Queries/Concerns?', p_info: 'Complete & Correct Information Provided', p_probe: 'Necessary Probing Done', p_objection: 'Ownership & Effective Objection Handling', p_tone: 'Tone, Articulation, Professional Language, ROS', p_listen: 'Active Listening', p_empathy: 'Empathy / Apology / Personalization / Acknowledgement', p_hold: 'Dead Air/Hold/Conference Procedure Followed', p_dispo: 'Correct Disposition Tagged', p_proactive: 'Demonstrated Proactive Effort to Drive Desired Action', p_closing: 'Closing', p_ethics: 'ZT - Adherence of Conduct & Ethics', p_datasec: 'Data Security / Non-Disclosure Breached', p_aprof: 'Agent Profanity' };
     const match = MATCH[p.pwdim];
@@ -471,7 +494,7 @@ dash.calc('pw_call_list', {
       if (!keep(r) || !match(r, p.pwcat)) continue;
       rows.push({ id: String(r.id), date: r.date, hour: String(r.hour).padStart(2, '0') + ':00', agent: r.agent, campaign: r.campaign,
         outcome: r.act ? r.outcome : (r.unanalysed || 'Not audited'), score: r.act ? r.score : null, fatal: r.fatal ? 'Yes' : 'No',
-        fatal_on: r.freason ? r.freason.split('|').map((id) => LABELS[id]).join(', ') : '', dur: r.dur });
+        fatal_on: r.freason ? r.freason.split('|').map((id) => LABELS[id]).join(', ') : '', dur: r.dur, loan: r.lan_masked });
     }
     return rows.reverse();
   },

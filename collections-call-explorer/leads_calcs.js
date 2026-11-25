@@ -170,36 +170,6 @@ dash.calc('lead_by_attempts', {
   },
 });
 
-dash.calc('lead_by_product', {
-  title: 'Leads by product',
-  description: 'Leads, and the share reached, promised and paid, for each product value; ignores its own lead filter.',
-  inputs: ['leads'],
-  fn: (leads) => {
-    const p = dash.params();
-    const lkeep = (r) => (!p.lstatus || r.best === p.lstatus) &&
-      (!p.latt || r.att_band === p.latt) &&
-      (!p.lemi || r.emi_band === p.lemi) &&
-      (!p.lcycle || r.cycle === p.lcycle);
-    const ORDER = null;
-    const g = new Map();
-    let total = 0;
-    for (const r of leads) {
-      if (!lkeep(r)) continue;
-      const v = r.prod;
-      let o = g.get(v);
-      if (!o) g.set(v, o = { n: 0, reached: 0, promised: 0, paid: 0, calls: 0 });
-      o.n++; total++; o.calls += r.calls;
-      if (r.connected) o.reached++;
-      if (r.promised || r.paid) o.promised++;
-      if (r.paid) o.paid++;
-    }
-    const pc = (x, y) => (y ? Math.round(10000 * x / y) / 100 : null);
-    const rows = [...g].map(([v, o]) => ({ product: v, leads: o.n, share: pc(o.n, total), reached_pct: pc(o.reached, o.n),
-      promised_pct: pc(o.promised, o.n), paid_pct: pc(o.paid, o.n), calls_per_lead: Math.round(100 * o.calls / o.n) / 100 }));
-    return ORDER ? rows.sort((a, b) => ORDER.indexOf(a.product) - ORDER.indexOf(b.product)) : rows.sort((a, b) => b.leads - a.leads);
-  },
-});
-
 dash.calc('lead_by_emi_band', {
   title: 'Leads by emi band',
   description: 'Leads, and the share reached, promised and paid, for each emi band value; ignores its own lead filter.',
@@ -276,12 +246,13 @@ dash.calc('lead_list', {
 });
 
 
-dash.calc('lead_by_agent', {
-  title: 'Lead results by agent',
-  description: 'For each agent: how many leads they called and what share of those leads they reached, got a promise from and saw paid, on their own calls. Follows the page filters and the lead tab’s filters.',
+dash.calc('lead_call_list', {
+  title: 'Calls of the clicked leads',
+  description: 'All calls (under the page filters) of the leads behind whatever was last clicked on the Lead-wise analysis tab: a headline card, funnel stage, bar or agent row. Newest first.',
   inputs: ['calls', 'leads'],
   fn: (calls, leads) => {
     const p = dash.params();
+    if (!p.pwdim || !p.pwcat || p.pwdim[0] !== 'L') return [];
     const keep = (r) => (!p.ctype || (r.campaign != null && (r.campaign.startsWith('PDM') ? 'Awareness' : 'Collection') === p.ctype)) &&
       (!p.week || r.week === p.week) &&
       (!p.agent || r.agent === p.agent) &&
@@ -302,21 +273,22 @@ dash.calc('lead_by_agent', {
       (!p.lprod || r.prod === p.lprod) &&
       (!p.lemi || r.emi_band === p.lemi) &&
       (!p.lcycle || r.cycle === p.lcycle);
-    const ok = new Set(leads.filter(lkeep).map((l) => l.lan));
-    const PROM = new Set(['Promise To Pay', 'Penal PTP', 'NACH PTP', 'Will Clear', 'Payment Done']);
-    const g = new Map();
+    const c = p.pwcat;
+    const LEAD = {
+      Lkpi: (l) => c === 'all' ? true : c === 'reached' ? l.connected > 0 : c === 'promised' ? !!(l.promised || l.paid) : c === 'paid' ? !!l.paid : c === 'multi' ? l.agents > 1 : false,
+      Lstage: (l) => c === 'Leads called' ? true : c === 'Reached (connected call)' ? l.connected > 0 : c === 'Promised to pay / will clear' ? !!(l.promised || l.paid) : c === 'Paid' ? !!l.paid : false,
+      Lstatus: (l) => l.best === c, Latt: (l) => l.att_band === c, Lemi: (l) => l.emi_band === c, Lcycle: (l) => l.cycle === c, Lagent: () => true,
+    };
+    const pick = LEAD[p.pwdim];
+    if (!pick) return [];
+    const ok = new Set(leads.filter((l) => lkeep(l) && pick(l)).map((l) => l.lan));
+    const rows = [];
     for (const r of calls) {
       if (r.lan == null || !ok.has(r.lan) || !keep(r)) continue;
-      let a = g.get(r.agent);
-      if (!a) g.set(r.agent, a = { leads: new Set(), reached: new Set(), promised: new Set(), paid: new Set(), calls: 0 });
-      a.leads.add(r.lan); a.calls++;
-      if (r.act) a.reached.add(r.lan);
-      if (r.act && PROM.has(r.outcome)) a.promised.add(r.lan);
-      if (r.act && r.outcome === 'Payment Done') a.paid.add(r.lan);
+      if (p.pwdim === 'Lagent' && r.agent !== c) continue;
+      rows.push({ id: String(r.id), loan: r.lan_masked, date: r.date, hour: String(r.hour).padStart(2, '0') + ':00', agent: r.agent, campaign: r.campaign,
+        outcome: r.act ? r.outcome : (r.unanalysed || 'Not audited'), score: r.act ? r.score : null, fatal: r.fatal ? 'Yes' : 'No', fatal_on: '', dur: r.dur });
     }
-    const pc = (x, y) => (y ? Math.round(10000 * x / y) / 100 : null);
-    return [...g].map(([agent, a]) => ({ agent, leads: a.leads.size, calls_per_lead: Math.round(100 * a.calls / a.leads.size) / 100,
-      reached_pct: pc(a.reached.size, a.leads.size), promised_pct: pc(a.promised.size, a.leads.size), paid: a.paid.size,
-      paid_pct: pc(a.paid.size, a.leads.size) })).sort((x, y) => y.leads - x.leads);
+    return rows.reverse();
   },
 });

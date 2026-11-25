@@ -8,10 +8,12 @@
   // campaign-type buttons: Collection (campaign name not starting with PDM) or Awareness (starts with PDM)
   document.querySelectorAll('[data-ctype]').forEach((b) => b.addEventListener('click', () => toggle('ctype', b.dataset.ctype)));
   // attendance tiles filter the page
-  document.querySelectorAll('[data-af]').forEach((b) => b.addEventListener('click', () => toggle(b.dataset.af, b.dataset.av)));
+  document.querySelectorAll('[data-af]').forEach((b) => b.addEventListener('click', () => window.CGpick('att', b.dataset.av)));
+  document.querySelectorAll('[data-kpi]').forEach((b) => b.addEventListener('click', () => window.CGpick('kpi', b.dataset.kpi)));
   function sync() {
     const p = dash.params();
-    document.querySelectorAll('[data-af]').forEach((b) => b.setAttribute('aria-pressed', String(p[b.dataset.af] === b.dataset.av)));
+    document.querySelectorAll('[data-af]').forEach((b) => b.setAttribute('aria-pressed', String(p.pwdim === 'att' && p.pwcat === b.dataset.av)));
+    document.querySelectorAll('[data-kpi]').forEach((b) => b.setAttribute('aria-pressed', String(p.pwdim === 'kpi' && p.pwcat === b.dataset.kpi)));
     document.querySelectorAll('[data-ctype]').forEach((b) => b.setAttribute('aria-pressed', String(p.ctype === b.dataset.ctype)));
     document.querySelectorAll('[data-hseg] button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.v === ST.hm)));
   }
@@ -100,12 +102,12 @@
     const higherBetter = k === 'fatal_rate' ? false : k === 'connected' ? null : true;
     const toneOf = (v) => {
       if (v == null) return '';
-      if (k === 'avg_score') return v >= 8.5 ? 'ok' : v >= 7 ? 'warn' : 'bad';
+      if (k === 'avg_score') return v >= 85 ? 'ok' : v >= 70 ? 'warn' : 'bad';
       if (k === 'fatal_rate') return v <= 5 ? 'ok' : v <= 12 ? 'warn' : 'bad';
       if (k === 'ptp_rate') return v >= 50 ? 'ok' : v >= 35 ? 'warn' : 'bad';
       return '';
     };
-    const sel = dash.params().agent;
+    const sel = dash.params().pwdim === 'aheat' ? dash.params().pwcat : null;
     const rows = [];
     for (const [agent, w] of by) {
       const total = weeks.reduce((s, wk) => s + (w[wk] ? w[wk].connected : 0), 0);
@@ -124,8 +126,9 @@
     const tbody = document.createElement('tbody');
     for (const r of rows) {
       const tr = document.createElement('tr'); tr.className = 'cg-click' + (r.agent === sel ? ' cg-row-on' : ''); tr.tabIndex = 0;
-      tr.addEventListener('click', () => toggle('agent', r.agent));
-      tr.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle('agent', r.agent); } });
+      tr.title = 'Click to list this agent’s connected calls';
+      tr.addEventListener('click', () => window.CGpick('aheat', r.agent));
+      tr.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); window.CGpick('aheat', r.agent); } });
       const td0 = document.createElement('td'); td0.textContent = r.agent; tr.appendChild(td0);
       for (const wk of weeks) {
         const td = document.createElement('td'); td.className = 'cg-num';
@@ -154,3 +157,6 @@
     el.replaceChildren(table);
   });
 })();
+
+// an info icon never triggers the card, tile or heading it sits in
+document.addEventListener('click', (e) => { if (e.target.closest && e.target.closest('.cg-i')) { e.stopPropagation(); e.preventDefault(); } }, true);

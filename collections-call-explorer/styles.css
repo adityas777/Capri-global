@@ -173,3 +173,24 @@ button.cg-tile[aria-pressed="true"] { border-color: var(--color-fg); box-shadow:
 .cg-kpi-v-sm { font-size: 1.35rem; line-height: 1.25; }
 .cg-cardhead { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 6px; }
 .cg-pwcalls td.cg-wrap { white-space: normal; min-width: 160px; }
+/* clickable cards and lists everywhere */
+button.cg-kpi:hover { border-color: var(--color-fg-muted); }
+button.cg-kpi[aria-pressed="true"] { border-color: var(--color-fg); box-shadow: inset 3px 0 0 var(--color-fg); }
+.cg-chart[data-draw="trend"] .cg-hit { cursor: pointer; }
+.cg-pwcalls-acts { display: inline-flex; gap: 6px; flex-wrap: wrap; }
+.cg-table th .cg-i { margin-left: 3px; }
+.cg-table td.cg-wrap { min-width: 260px; }
+/* definition markers next to bar labels */
+.cg-svgi { cursor: help; outline: none; }
+.cg-svgi circle { fill: var(--color-panel); stroke: var(--color-fg-muted); stroke-width: 1; }
+.cg-svgi text { font: italic 600 9px Georgia, serif; fill: var(--color-fg-muted); pointer-events: none; }
+.cg-svgi:hover circle, .cg-svgi:focus circle { stroke: var(--color-fg); }
+.cg-svgi:hover text, .cg-svgi:focus text { fill: var(--color-fg); }
+.cg-deftip { max-width: 300px; line-height: 1.45; white-space: normal; }
+.cg-lab-sub { fill: var(--color-fg-muted); }
+/* call lists open right below what was clicked */
+.cg-card { position: relative; }
+.cg-pwcalls.cg-pop { position: absolute; left: 10px; right: 10px; z-index: 8; margin-top: 4px; background: var(--color-panel); border: 1px solid var(--color-fg-muted); border-radius: var(--cds-radius); box-shadow: var(--cds-shadow-popover); padding: 10px 12px; border-top-width: 1px; }
+.cg-pwcalls.cg-pop .cg-pwcalls-body { max-height: 320px; }
+.cg-pwcalls.cg-pop::before { content: ""; position: absolute; top: -7px; left: 24px; width: 12px; height: 12px; background: var(--color-panel); border-left: 1px solid var(--color-fg-muted); border-top: 1px solid var(--color-fg-muted); transform: rotate(45deg); }
+.cg-fb { position: relative; }

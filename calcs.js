@@ -185,43 +185,6 @@ dash.calc('by_agent', {
   },
 });
 
-dash.calc('by_lang', {
-  title: 'Calls by language (selection)',
-  description: 'Calls, PTP rate, fatal rate and quality score for each calls by language value, under every filter except this one.',
-  inputs: ['calls'],
-  fn: (calls) => {
-    const p = dash.params();
-    const keep = (r) => (!p.ctype || (r.campaign != null && (r.campaign.startsWith('PDM') ? 'Awareness' : 'Collection') === p.ctype)) &&
-      (!p.week || r.week === p.week) &&
-      (!p.agent || r.agent === p.agent) &&
-      (!p.campaign || r.campaign === p.campaign) &&
-      (!p.outcome || r.outcome === p.outcome) &&
-      (!p.intent || r.intent === p.intent) &&
-      (!p.cap || r.cap === p.cap) &&
-      (!p.reason || r.reason === p.reason) &&
-      (!p.rsub || r.rsub === p.rsub) &&
-      (!p.sent || r.sent === p.sent) &&
-      (!p.attend || r.attend === p.attend) &&
-      (!p.dband || r.dband === p.dband) &&
-      (!p.flag || r[p.flag] === 1) &&
-      (!p.param || r[p.param] === 0 || r[p.param] === 2);
-    const PTP = new Set(['Promise To Pay', 'Penal PTP', 'NACH PTP']);
-    const g = new Map();
-    let total = 0;
-    for (const r of calls) {
-      const k = r.lang;
-      if (k == null || !keep(r)) continue;
-      let o = g.get(k);
-      if (!o) g.set(k, o = { n: 0, a: 0, ss: 0, ptp: 0, fat: 0 });
-      o.n++; total++;
-      if (r.act) { o.a++; o.ss += r.score || 0; if (PTP.has(r.outcome)) o.ptp++; if (r.fatal) o.fat++; }
-    }
-    const pc = (x, y) => (y ? Math.round(10000 * x / y) / 100 : null);
-    return [...g].map(([k, o]) => ({ lang: k, calls: o.n, share: pc(o.n, total), connected: o.a, ptp_rate: pc(o.ptp, o.a),
-      fatal_rate: pc(o.fat, o.a), avg_score: o.a ? Math.round(100 * o.ss / o.a) / 100 : null })).sort((x, y) => y.calls - x.calls);
-  },
-});
-
 dash.calc('by_campaign', {
   title: 'Calls by campaign (selection)',
   description: 'Calls, PTP rate, fatal rate and quality score for each calls by campaign value, under every filter except this one.',
@@ -255,228 +218,6 @@ dash.calc('by_campaign', {
     }
     const pc = (x, y) => (y ? Math.round(10000 * x / y) / 100 : null);
     return [...g].map(([k, o]) => ({ campaign: k, calls: o.n, share: pc(o.n, total), connected: o.a, ptp_rate: pc(o.ptp, o.a),
-      fatal_rate: pc(o.fat, o.a), avg_score: o.a ? Math.round(100 * o.ss / o.a) / 100 : null })).sort((x, y) => y.calls - x.calls);
-  },
-});
-
-dash.calc('by_outcome', {
-  title: 'Call outcomes (selection)',
-  description: 'Calls, PTP rate, fatal rate and quality score for each call outcomes value, under every filter except this one.',
-  inputs: ['calls'],
-  fn: (calls) => {
-    const p = dash.params();
-    const keep = (r) => (!p.ctype || (r.campaign != null && (r.campaign.startsWith('PDM') ? 'Awareness' : 'Collection') === p.ctype)) &&
-      (!p.week || r.week === p.week) &&
-      (!p.agent || r.agent === p.agent) &&
-      (!p.lang || r.lang === p.lang) &&
-      (!p.campaign || r.campaign === p.campaign) &&
-      (!p.intent || r.intent === p.intent) &&
-      (!p.cap || r.cap === p.cap) &&
-      (!p.reason || r.reason === p.reason) &&
-      (!p.rsub || r.rsub === p.rsub) &&
-      (!p.sent || r.sent === p.sent) &&
-      (!p.attend || r.attend === p.attend) &&
-      (!p.dband || r.dband === p.dband) &&
-      (!p.flag || r[p.flag] === 1) &&
-      (!p.param || r[p.param] === 0 || r[p.param] === 2);
-    const PTP = new Set(['Promise To Pay', 'Penal PTP', 'NACH PTP']);
-    const g = new Map();
-    let total = 0;
-    for (const r of calls) {
-      const k = r.outcome;
-      if (k == null || !keep(r)) continue;
-      let o = g.get(k);
-      if (!o) g.set(k, o = { n: 0, a: 0, ss: 0, ptp: 0, fat: 0 });
-      o.n++; total++;
-      if (r.act) { o.a++; o.ss += r.score || 0; if (PTP.has(r.outcome)) o.ptp++; if (r.fatal) o.fat++; }
-    }
-    const pc = (x, y) => (y ? Math.round(10000 * x / y) / 100 : null);
-    return [...g].map(([k, o]) => ({ outcome: k, calls: o.n, share: pc(o.n, total), connected: o.a, ptp_rate: pc(o.ptp, o.a),
-      fatal_rate: pc(o.fat, o.a), avg_score: o.a ? Math.round(100 * o.ss / o.a) / 100 : null })).sort((x, y) => y.calls - x.calls);
-  },
-});
-
-dash.calc('by_intent', {
-  title: 'Payment intent (selection)',
-  description: 'Calls, PTP rate, fatal rate and quality score for each payment intent value, under every filter except this one.',
-  inputs: ['calls'],
-  fn: (calls) => {
-    const p = dash.params();
-    const keep = (r) => (!p.ctype || (r.campaign != null && (r.campaign.startsWith('PDM') ? 'Awareness' : 'Collection') === p.ctype)) &&
-      (!p.week || r.week === p.week) &&
-      (!p.agent || r.agent === p.agent) &&
-      (!p.lang || r.lang === p.lang) &&
-      (!p.campaign || r.campaign === p.campaign) &&
-      (!p.outcome || r.outcome === p.outcome) &&
-      (!p.cap || r.cap === p.cap) &&
-      (!p.reason || r.reason === p.reason) &&
-      (!p.rsub || r.rsub === p.rsub) &&
-      (!p.sent || r.sent === p.sent) &&
-      (!p.attend || r.attend === p.attend) &&
-      (!p.dband || r.dband === p.dband) &&
-      (!p.flag || r[p.flag] === 1) &&
-      (!p.param || r[p.param] === 0 || r[p.param] === 2);
-    const PTP = new Set(['Promise To Pay', 'Penal PTP', 'NACH PTP']);
-    const g = new Map();
-    let total = 0;
-    for (const r of calls) {
-      const k = r.intent;
-      if (k == null || !keep(r)) continue;
-      let o = g.get(k);
-      if (!o) g.set(k, o = { n: 0, a: 0, ss: 0, ptp: 0, fat: 0 });
-      o.n++; total++;
-      if (r.act) { o.a++; o.ss += r.score || 0; if (PTP.has(r.outcome)) o.ptp++; if (r.fatal) o.fat++; }
-    }
-    const pc = (x, y) => (y ? Math.round(10000 * x / y) / 100 : null);
-    return [...g].map(([k, o]) => ({ intent: k, calls: o.n, share: pc(o.n, total), connected: o.a, ptp_rate: pc(o.ptp, o.a),
-      fatal_rate: pc(o.fat, o.a), avg_score: o.a ? Math.round(100 * o.ss / o.a) / 100 : null })).sort((x, y) => y.calls - x.calls);
-  },
-});
-
-dash.calc('by_cap', {
-  title: 'Payment capability (selection)',
-  description: 'Calls, PTP rate, fatal rate and quality score for each payment capability value, under every filter except this one.',
-  inputs: ['calls'],
-  fn: (calls) => {
-    const p = dash.params();
-    const keep = (r) => (!p.ctype || (r.campaign != null && (r.campaign.startsWith('PDM') ? 'Awareness' : 'Collection') === p.ctype)) &&
-      (!p.week || r.week === p.week) &&
-      (!p.agent || r.agent === p.agent) &&
-      (!p.lang || r.lang === p.lang) &&
-      (!p.campaign || r.campaign === p.campaign) &&
-      (!p.outcome || r.outcome === p.outcome) &&
-      (!p.intent || r.intent === p.intent) &&
-      (!p.reason || r.reason === p.reason) &&
-      (!p.rsub || r.rsub === p.rsub) &&
-      (!p.sent || r.sent === p.sent) &&
-      (!p.attend || r.attend === p.attend) &&
-      (!p.dband || r.dband === p.dband) &&
-      (!p.flag || r[p.flag] === 1) &&
-      (!p.param || r[p.param] === 0 || r[p.param] === 2);
-    const PTP = new Set(['Promise To Pay', 'Penal PTP', 'NACH PTP']);
-    const g = new Map();
-    let total = 0;
-    for (const r of calls) {
-      const k = r.cap;
-      if (k == null || !keep(r)) continue;
-      let o = g.get(k);
-      if (!o) g.set(k, o = { n: 0, a: 0, ss: 0, ptp: 0, fat: 0 });
-      o.n++; total++;
-      if (r.act) { o.a++; o.ss += r.score || 0; if (PTP.has(r.outcome)) o.ptp++; if (r.fatal) o.fat++; }
-    }
-    const pc = (x, y) => (y ? Math.round(10000 * x / y) / 100 : null);
-    return [...g].map(([k, o]) => ({ cap: k, calls: o.n, share: pc(o.n, total), connected: o.a, ptp_rate: pc(o.ptp, o.a),
-      fatal_rate: pc(o.fat, o.a), avg_score: o.a ? Math.round(100 * o.ss / o.a) / 100 : null })).sort((x, y) => y.calls - x.calls);
-  },
-});
-
-dash.calc('by_reason', {
-  title: 'Non-payment reasons (selection)',
-  description: 'Calls, PTP rate, fatal rate and quality score for each non-payment reasons value, under every filter except this one.',
-  inputs: ['calls'],
-  fn: (calls) => {
-    const p = dash.params();
-    const keep = (r) => (!p.ctype || (r.campaign != null && (r.campaign.startsWith('PDM') ? 'Awareness' : 'Collection') === p.ctype)) &&
-      (!p.week || r.week === p.week) &&
-      (!p.agent || r.agent === p.agent) &&
-      (!p.lang || r.lang === p.lang) &&
-      (!p.campaign || r.campaign === p.campaign) &&
-      (!p.outcome || r.outcome === p.outcome) &&
-      (!p.intent || r.intent === p.intent) &&
-      (!p.cap || r.cap === p.cap) &&
-      (!p.rsub || r.rsub === p.rsub) &&
-      (!p.sent || r.sent === p.sent) &&
-      (!p.attend || r.attend === p.attend) &&
-      (!p.dband || r.dband === p.dband) &&
-      (!p.flag || r[p.flag] === 1) &&
-      (!p.param || r[p.param] === 0 || r[p.param] === 2);
-    const PTP = new Set(['Promise To Pay', 'Penal PTP', 'NACH PTP']);
-    const g = new Map();
-    let total = 0;
-    for (const r of calls) {
-      const k = r.reason;
-      if (k == null || !keep(r)) continue;
-      let o = g.get(k);
-      if (!o) g.set(k, o = { n: 0, a: 0, ss: 0, ptp: 0, fat: 0 });
-      o.n++; total++;
-      if (r.act) { o.a++; o.ss += r.score || 0; if (PTP.has(r.outcome)) o.ptp++; if (r.fatal) o.fat++; }
-    }
-    const pc = (x, y) => (y ? Math.round(10000 * x / y) / 100 : null);
-    return [...g].map(([k, o]) => ({ reason: k, calls: o.n, share: pc(o.n, total), connected: o.a, ptp_rate: pc(o.ptp, o.a),
-      fatal_rate: pc(o.fat, o.a), avg_score: o.a ? Math.round(100 * o.ss / o.a) / 100 : null })).sort((x, y) => y.calls - x.calls);
-  },
-});
-
-dash.calc('by_rsub', {
-  title: 'Specific non-payment reasons (selection)',
-  description: 'Calls, PTP rate, fatal rate and quality score for each specific non-payment reasons value, under every filter except this one.',
-  inputs: ['calls'],
-  fn: (calls) => {
-    const p = dash.params();
-    const keep = (r) => (!p.ctype || (r.campaign != null && (r.campaign.startsWith('PDM') ? 'Awareness' : 'Collection') === p.ctype)) &&
-      (!p.week || r.week === p.week) &&
-      (!p.agent || r.agent === p.agent) &&
-      (!p.lang || r.lang === p.lang) &&
-      (!p.campaign || r.campaign === p.campaign) &&
-      (!p.outcome || r.outcome === p.outcome) &&
-      (!p.intent || r.intent === p.intent) &&
-      (!p.cap || r.cap === p.cap) &&
-      (!p.reason || r.reason === p.reason) &&
-      (!p.sent || r.sent === p.sent) &&
-      (!p.attend || r.attend === p.attend) &&
-      (!p.dband || r.dband === p.dband) &&
-      (!p.flag || r[p.flag] === 1) &&
-      (!p.param || r[p.param] === 0 || r[p.param] === 2);
-    const PTP = new Set(['Promise To Pay', 'Penal PTP', 'NACH PTP']);
-    const g = new Map();
-    let total = 0;
-    for (const r of calls) {
-      const k = r.rsub;
-      if (k == null || !keep(r)) continue;
-      let o = g.get(k);
-      if (!o) g.set(k, o = { n: 0, a: 0, ss: 0, ptp: 0, fat: 0 });
-      o.n++; total++;
-      if (r.act) { o.a++; o.ss += r.score || 0; if (PTP.has(r.outcome)) o.ptp++; if (r.fatal) o.fat++; }
-    }
-    const pc = (x, y) => (y ? Math.round(10000 * x / y) / 100 : null);
-    return [...g].map(([k, o]) => ({ rsub: k, calls: o.n, share: pc(o.n, total), connected: o.a, ptp_rate: pc(o.ptp, o.a),
-      fatal_rate: pc(o.fat, o.a), avg_score: o.a ? Math.round(100 * o.ss / o.a) / 100 : null })).sort((x, y) => y.calls - x.calls);
-  },
-});
-
-dash.calc('by_sent', {
-  title: 'Customer sentiment (selection)',
-  description: 'Calls, PTP rate, fatal rate and quality score for each customer sentiment value, under every filter except this one.',
-  inputs: ['calls'],
-  fn: (calls) => {
-    const p = dash.params();
-    const keep = (r) => (!p.ctype || (r.campaign != null && (r.campaign.startsWith('PDM') ? 'Awareness' : 'Collection') === p.ctype)) &&
-      (!p.week || r.week === p.week) &&
-      (!p.agent || r.agent === p.agent) &&
-      (!p.lang || r.lang === p.lang) &&
-      (!p.campaign || r.campaign === p.campaign) &&
-      (!p.outcome || r.outcome === p.outcome) &&
-      (!p.intent || r.intent === p.intent) &&
-      (!p.cap || r.cap === p.cap) &&
-      (!p.reason || r.reason === p.reason) &&
-      (!p.rsub || r.rsub === p.rsub) &&
-      (!p.attend || r.attend === p.attend) &&
-      (!p.dband || r.dband === p.dband) &&
-      (!p.flag || r[p.flag] === 1) &&
-      (!p.param || r[p.param] === 0 || r[p.param] === 2);
-    const PTP = new Set(['Promise To Pay', 'Penal PTP', 'NACH PTP']);
-    const g = new Map();
-    let total = 0;
-    for (const r of calls) {
-      const k = r.sent;
-      if (k == null || !keep(r)) continue;
-      let o = g.get(k);
-      if (!o) g.set(k, o = { n: 0, a: 0, ss: 0, ptp: 0, fat: 0 });
-      o.n++; total++;
-      if (r.act) { o.a++; o.ss += r.score || 0; if (PTP.has(r.outcome)) o.ptp++; if (r.fatal) o.fat++; }
-    }
-    const pc = (x, y) => (y ? Math.round(10000 * x / y) / 100 : null);
-    return [...g].map(([k, o]) => ({ sent: k, calls: o.n, share: pc(o.n, total), connected: o.a, ptp_rate: pc(o.ptp, o.a),
       fatal_rate: pc(o.fat, o.a), avg_score: o.a ? Math.round(100 * o.ss / o.a) / 100 : null })).sort((x, y) => y.calls - x.calls);
   },
 });
@@ -519,40 +260,6 @@ dash.calc('by_param', {
   },
 });
 
-dash.calc('by_flag', {
-  title: 'Risk flags (selection)',
-  description: 'Connected calls carrying each risk or compliance flag, under every filter except the risk-flag filter.',
-  inputs: ['calls'],
-  fn: (calls) => {
-    const p = dash.params();
-    const keep = (r) => (!p.ctype || (r.campaign != null && (r.campaign.startsWith('PDM') ? 'Awareness' : 'Collection') === p.ctype)) &&
-      (!p.week || r.week === p.week) &&
-      (!p.agent || r.agent === p.agent) &&
-      (!p.lang || r.lang === p.lang) &&
-      (!p.campaign || r.campaign === p.campaign) &&
-      (!p.outcome || r.outcome === p.outcome) &&
-      (!p.intent || r.intent === p.intent) &&
-      (!p.cap || r.cap === p.cap) &&
-      (!p.reason || r.reason === p.reason) &&
-      (!p.rsub || r.rsub === p.rsub) &&
-      (!p.sent || r.sent === p.sent) &&
-      (!p.attend || r.attend === p.attend) &&
-      (!p.dband || r.dband === p.dband) &&
-      (!p.param || r[p.param] === 0 || r[p.param] === 2);
-    const LABELS = { f_fatal: 'Fatal error on call', f_visit: 'Home-visit threat by agent', f_threat: 'Legal / court / bank / social threat', f_aprof: 'Agent profanity', f_cprof: 'Customer profanity', f_datasec: 'Data-security breach', f_dnd: 'DND requested by customer', f_rbi: 'RBI mentioned', f_wilful: 'Wilful default suspected', f_angry: 'Angry or frustrated customer', f_waiver: 'Waiver pitched', f_settle: 'Settlement discussed' };
-    const c = {};
-    let a = 0;
-    for (const id in LABELS) c[id] = 0;
-    for (const r of calls) {
-      if (!r.act || !keep(r)) continue;
-      a++;
-      for (const id in LABELS) if (r[id] === 1) c[id]++;
-    }
-    return Object.keys(LABELS).map((id) => ({ flag: id, label: LABELS[id], calls: c[id], share: a ? Math.round(10000 * c[id] / a) / 100 : null }))
-      .sort((x, y) => y.calls - x.calls);
-  },
-});
-
 dash.calc('attendance', {
   title: 'Attended calls and call length',
   description: 'Total calls split into attended (dialer marked Connected) and not attended, and attended calls by length. Ignores the attended and call-length filters so every tile stays visible.',
@@ -588,11 +295,11 @@ dash.calc('attendance', {
 
 dash.calc('options', {
   title: 'Filter choices',
-  description: 'Every agent, language and campaign in the file, with its call count, for the filter menus.',
+  description: 'Every agent and campaign in the file, with its call count, for the filter menus.',
   inputs: ['calls'],
   fn: (calls) => {
     const g = new Map();
-    for (const r of calls) for (const dim of ['agent', 'lang', 'campaign']) {
+    for (const r of calls) for (const dim of ['agent', 'campaign']) {
       if (r[dim] == null) continue;
       const k = dim + '|' + r[dim];
       g.set(k, (g.get(k) || 0) + 1);

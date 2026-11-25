@@ -1,44 +1,8 @@
 // Trends & suggestions tab: agent trend by week, coaching list, and fixed observations for November.
 
-dash.calc('agent_week', {
-  title: 'Agent trend by week',
-  description: 'Each agent’s connected calls, quality score, fatal rate and PTP rate in each week. Follows the page filters.',
-  inputs: ['calls'],
-  fn: (calls) => {
-    const p = dash.params();
-    const keep = (r) => (!p.ctype || (r.campaign != null && (r.campaign.startsWith('PDM') ? 'Awareness' : 'Collection') === p.ctype)) &&
-      (!p.week || r.week === p.week) &&
-      (!p.agent || r.agent === p.agent) &&
-      (!p.lang || r.lang === p.lang) &&
-      (!p.campaign || r.campaign === p.campaign) &&
-      (!p.outcome || r.outcome === p.outcome) &&
-      (!p.intent || r.intent === p.intent) &&
-      (!p.cap || r.cap === p.cap) &&
-      (!p.reason || r.reason === p.reason) &&
-      (!p.rsub || r.rsub === p.rsub) &&
-      (!p.sent || r.sent === p.sent) &&
-      (!p.attend || r.attend === p.attend) &&
-      (!p.dband || r.dband === p.dband) &&
-      (!p.flag || r[p.flag] === 1) &&
-      (!p.param || r[p.param] === 0 || r[p.param] === 2);
-    const PTP = new Set(['Promise To Pay', 'Penal PTP', 'NACH PTP']);
-    const g = new Map();
-    for (const r of calls) {
-      if (!r.act || !keep(r)) continue;
-      const k = r.agent + '|' + r.week;
-      let o = g.get(k);
-      if (!o) g.set(k, o = { agent: r.agent, week: r.week, n: 0, s: 0, f: 0, ptp: 0 });
-      o.n++; o.s += r.score || 0; if (r.fatal) o.f++; if (PTP.has(r.outcome)) o.ptp++;
-    }
-    const pc = (x, y) => (y ? Math.round(10000 * x / y) / 100 : null);
-    return [...g.values()].map((o) => ({ agent: o.agent, week: o.week, connected: o.n, avg_score: Math.round(100 * o.s / o.n) / 100,
-      fatal_rate: pc(o.f, o.n), ptp_rate: pc(o.ptp, o.n) })).sort((a, b) => (a.agent < b.agent ? -1 : a.agent > b.agent ? 1 : a.week < b.week ? -1 : 1));
-  },
-});
-
 dash.calc('coach', {
   title: 'Agents to coach',
-  description: 'Agents with at least 30 connected calls in the selection, highest fatal rate first, with the audit parameter they pass least often, the one behind most of their fatal errors, and a coaching tip for the weakest one.',
+  description: 'Agents with at least 30 connected calls in the selection, highest fatal rate first, with their weakest audit checks (every check passed under 85% of the time, up to three, or else the single lowest), the check behind most of their fatal errors, a coaching tip for each weak check, and a PTP improvement suggestion built from the agent’s own calls: PTP rate against the team, high-intent customers left without a promise, very short calls, their weakest PTP-driving skill and their most common non-payment reason.',
   inputs: ['calls'],
   fn: (calls) => {
     const p = dash.params();
@@ -78,12 +42,28 @@ dash.calc('coach', {
       p_aprof: 'Zero tolerance for abusive language; review every flagged call with the agent.',
     };
     const PTP = new Set(['Promise To Pay', 'Penal PTP', 'NACH PTP']);
+    const PROM = new Set(['Promise To Pay', 'Penal PTP', 'NACH PTP', 'Will Clear', 'Payment Done']);
+    const SKILL = { p_probe: 'Necessary probing', p_objection: 'Objection handling', p_proactive: 'Proactive effort (asking for amount and date)', p_closing: 'Closing' };
+    const SKILL_TIP = {
+      p_probe: 'ask why the payment is late and exactly when funds will be available before asking for a date',
+      p_objection: 'prepare a short answer for each common objection and steer back to a date and amount',
+      p_proactive: 'make a clear ask on every call — a specific amount, a specific date, and offer the payment link while the customer is on the line',
+      p_closing: 'end every call by repeating the promise (amount + date + mode) and getting a clear “yes”',
+    };
     const g = new Map();
+    let tN = 0, tP = 0, tS = 0;
+    const camp = {};
     for (const r of calls) {
       if (!r.act || !keep(r)) continue;
+      tN++; if (PTP.has(r.outcome)) tP++; if (r.dur < 60) tS++;
+      const cs = (camp[r.campaign] ??= { n: 0, p: 0 }); cs.n++; if (PTP.has(r.outcome)) cs.p++;
       let o = g.get(r.agent);
-      if (!o) { o = { n: 0, s: 0, f: 0, ptp: 0, pa: {}, pp: {}, pf: {} }; g.set(r.agent, o); }
+      if (!o) { o = { n: 0, s: 0, f: 0, ptp: 0, hiMiss: 0, short: 0, reasons: {}, pa: {}, pp: {}, pf: {} }; g.set(r.agent, o); }
       o.n++; o.s += r.score || 0; if (r.fatal) o.f++; if (PTP.has(r.outcome)) o.ptp++;
+      if (r.intent === 'High' && !PROM.has(r.outcome)) o.hiMiss++;
+      if (r.dur < 60) o.short++;
+      (o.camps ??= {})[r.campaign] = ((o.camps ?? {})[r.campaign] || 0) + 1;
+      if (r.reason && r.reason !== 'Other/ Unspecified') o.reasons[r.reason] = (o.reasons[r.reason] || 0) + 1;
       for (const id in LABELS) {
         const v = r[id];
         if (v == null) continue;
@@ -96,14 +76,38 @@ dash.calc('coach', {
     const rows = [];
     for (const [agent, o] of g) {
       if (o.n < 30) continue;
-      let weak = null, weakRate = 101, topF = null, topFn = 0;
+      // weakest checks: every check with 20+ assessed calls passed under 85% of the time (up to 3, weakest first); otherwise the single lowest
+      let topF = null, topFn = 0;
+      const rated = [];
       for (const id in LABELS) {
-        if ((o.pa[id] || 0) >= 20) { const rate = pc(o.pp[id] || 0, o.pa[id]); if (rate < weakRate) { weakRate = rate; weak = id; } }
+        if ((o.pa[id] || 0) >= 20) rated.push([id, pc(o.pp[id] || 0, o.pa[id])]);
         if ((o.pf[id] || 0) > topFn) { topFn = o.pf[id]; topF = id; }
       }
-      rows.push({ agent, connected: o.n, avg_score: Math.round(100 * o.s / o.n) / 100, fatal_rate: pc(o.f, o.n), ptp_rate: pc(o.ptp, o.n),
-        weakest: weak ? LABELS[weak] : null, weakest_pass: weak ? weakRate : null, top_fatal: topF ? LABELS[topF] : null, top_fatal_calls: topFn,
-        tip: weak ? TIPS[weak] : null });
+      rated.sort((a, b) => a[1] - b[1]);
+      let weakList = rated.filter((x) => x[1] < 85).slice(0, 3);
+      if (!weakList.length && rated.length) weakList = [rated[0]];
+      const weak = weakList.length ? weakList[0][0] : null, weakRate = weakList.length ? weakList[0][1] : null;
+      // PTP improvement suggestion, personal to the agent
+      // compare with the team on the same campaigns the agent called (awareness campaigns convert far less)
+      let exp = 0;
+      for (const [c, k] of Object.entries(o.camps)) exp += k * (camp[c].p / camp[c].n);
+      const rate = pc(o.ptp, o.n), team = Math.round(10000 * exp / o.n) / 100, gap = Math.round(100 * (rate - team)) / 100;
+      const parts = [];
+      parts.push(gap < 0
+        ? `PTP rate ${rate.toFixed(2)}% is ${Math.abs(gap).toFixed(2)} pts below the ${team.toFixed(2)}% the team gets on the same campaigns.`
+        : `PTP rate ${rate.toFixed(2)}% is ${gap.toFixed(2)} pts above the ${team.toFixed(2)}% the team gets on the same campaigns — share what works in team huddles.`);
+      if (o.hiMiss > 0) parts.push(`${o.hiMiss} call${o.hiMiss === 1 ? '' : 's'} with high-intent customers ended without a promise; on these, ask for a specific amount and date before closing.`);
+      const shortPct = pc(o.short, o.n), teamShort = pc(tS, tN);
+      if (shortPct > teamShort + 5) parts.push(`${shortPct.toFixed(2)}% of connected calls end within a minute (team ${teamShort.toFixed(2)}%); stay on long enough to make the payment ask.`);
+      let sk = null, skRate = 101;
+      for (const id in SKILL) if ((o.pa[id] || 0) >= 20) { const pr = pc(o.pp[id] || 0, o.pa[id]); if (pr < skRate) { skRate = pr; sk = id; } }
+      const topR = Object.entries(o.reasons).sort((x, y) => y[1] - x[1])[0];
+      if (sk) parts.push(`Weakest PTP-driving skill: ${SKILL[sk]} (${skRate.toFixed(2)}% pass) — ${SKILL_TIP[sk]}${topR ? `, especially for “${topR[0]}”, the most common reason customers give (${pc(topR[1], o.n).toFixed(2)}% of calls)` : ''}.`);
+      rows.push({ agent, connected: o.n, avg_score: Math.round(100 * o.s / o.n) / 100, fatal_rate: pc(o.f, o.n), ptp_rate: rate,
+        ptp_tip: parts.join(' '),
+        weakest: weakList.map(([id, r]) => `${LABELS[id]} (${r.toFixed(2)}%)`).join(', ') || null, weakest_pass: weak ? weakRate : null,
+        top_fatal: topF ? LABELS[topF] : null, top_fatal_calls: topFn,
+        tip: weakList.length > 1 ? weakList.map(([id], i) => `${i + 1}) ${LABELS[id]}: ${TIPS[id]}`).join(' ') : weak ? TIPS[weak] : null });
     }
     return rows.sort((a, b) => b.fatal_rate - a.fatal_rate || a.avg_score - b.avg_score);
   },

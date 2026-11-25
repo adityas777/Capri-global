@@ -10,7 +10,7 @@
   const TONE = { ok: 'var(--color-ok)', warn: 'var(--color-warn)', bad: 'var(--color-bad)' };
   const tone = (kind, v) => {
     if (v === null || v === undefined) return '';
-    if (kind === 'score') return v >= 8.5 ? 'ok' : v >= 7 ? 'warn' : 'bad';
+    if (kind === 'score') return v >= 85 ? 'ok' : v >= 70 ? 'warn' : 'bad';
     if (kind === 'fatal') return v <= 5 ? 'ok' : v <= 12 ? 'warn' : 'bad';
     if (kind === 'pass') return v >= 90 ? 'ok' : v >= 75 ? 'warn' : 'bad';
     return '';
@@ -25,7 +25,7 @@
     ['Rates (%)', 'connect_rate', 'Connect rate', 'pct', 'pct'], ['Rates (%)', 'ptp_rate', 'PTP rate', 'pct', 'pct'],
     ['Rates (%)', 'fatal_rate', 'Fatal rate', 'pct', 'pct'], ['Rates (%)', 'high_intent_pct', 'High payment intent', 'pct', 'pct'],
     ['Rates (%)', 'angry_pct', 'Angry / frustrated', 'pct', 'pct'], ['Rates (%)', 'wilful_pct', 'Wilful default', 'pct', 'pct'],
-    ['Quality', 'avg_score', 'Avg quality score (/10)', 'score', 'score'],
+    ['Quality', 'avg_score', 'Avg quality score (/100)', 'pct', 'score'],
     ['Audit pass rate (%)', 'p_greet', 'Greeting', 'pct', 'pct'], ['Audit pass rate (%)', 'p_info', 'Complete & correct info', 'pct', 'pct'],
     ['Audit pass rate (%)', 'p_probe', 'Probing', 'pct', 'pct'], ['Audit pass rate (%)', 'p_listen', 'Active listening', 'pct', 'pct'],
     ['Audit pass rate (%)', 'p_empathy', 'Empathy', 'pct', 'pct'], ['Audit pass rate (%)', 'p_hold', 'Dead air / hold', 'pct', 'pct'],
@@ -60,6 +60,9 @@
     fatal_rate: { field: 'fatal_rate', f: 'pct', label: 'Fatal rate' }, avg_score: { field: 'avg_score', f: 'score', label: 'Avg score' },
   };
   const toggleParam = (k, v) => { const p = dash.params(); dash.setParams({ [k]: p[k] === v ? null : v }); };
+  // every click opens the list of calls behind what was clicked (shown under that chart, table or card)
+  const pick = (window.CGpick = (dim, cat) => { const p = dash.params(); if (p.pwdim === dim && p.pwcat === cat) dash.setParams({ pwdim: null, pwcat: null }); else dash.setParams({ pwdim: dim, pwcat: cat }); });
+  const picked = (dim) => { const p = dash.params(); return p.pwdim === dim ? p.pwcat : null; };
 
   // ---- controls: listen, and reflect state through aria/checked/class only ----
   function sync() {
@@ -74,8 +77,7 @@
       i.closest('label').classList.toggle('on', i.checked);
     });
     document.querySelectorAll('[data-preset]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.preset === CG.preset)));
-    document.querySelectorAll('[data-toggle-flag]').forEach((b) => b.setAttribute('aria-pressed', String(p.flag === b.dataset.toggleFlag)));
-    document.querySelectorAll('.cg-tab').forEach((t) => t.setAttribute('aria-selected', String(t.getAttribute('aria-controls') === CG.tab)));
+        document.querySelectorAll('.cg-tab').forEach((t) => t.setAttribute('aria-selected', String(t.getAttribute('aria-controls') === CG.tab)));
   }
   document.querySelectorAll('.cg-sw[data-s]').forEach((e) => { const s = SERI[e.dataset.s]; if (s) e.style.background = colorOf(s); });
   document.querySelectorAll('[data-seg] button').forEach((b) => b.addEventListener('click', () => {
@@ -92,9 +94,8 @@
     const k = b.dataset.preset;
     CG.on = new Set(PRESETS[k] || []); CG.preset = k; sync(); dash.draw('trend');
   }));
-  document.querySelectorAll('[data-toggle-flag]').forEach((b) => b.addEventListener('click', () => toggleParam('flag', b.dataset.toggleFlag)));
   document.querySelectorAll('[data-clear]').forEach((b) => b.addEventListener('click', () => dash.resetParams()));
-  const DRAWS = ['val', 'cbar', 'trend', 'tbl', 'chips', 'opts'];
+  const DRAWS = ['val', 'cbar', 'trend', 'tbl', 'chips', 'opts', 'pwcalls'];
   function openTab(id, link) {
     if (!document.getElementById(id)) return;
     CG.tab = id;
@@ -199,7 +200,7 @@
     if (el.dataset.sort === 'key') rows = rows.slice().sort((a, b) => (a[key] < b[key] ? -1 : 1));
     else if (el.dataset.sort !== 'none') rows = rows.slice().sort((a, b) => b[m.field] - a[m.field]);
     if (el.dataset.limit) rows = rows.slice(0, +el.dataset.limit);
-    const sel = dim === 'none' ? null : dash.params()[dim];
+    const sel = dim === 'none' ? null : picked(dim);
     const rowH = 30, H = rows.length * rowH + 4;
     el.replaceChildren();
     const svg = d3.select(el).append('svg').attr('width', W).attr('height', H).attr('role', 'img').attr('aria-label', el.dataset.aria || 'Bar chart');
@@ -212,8 +213,10 @@
     const vt = (d) => fmt(d[m.field], m.f) + (share && d.share != null ? '  ·  ' + fmt(d.share, 'pct') : '');
     const probe = svg.append('text').attr('class', 'cg-val').text(rows.map(vt).reduce((a, b) => (b.length > a.length ? b : a), ''));
     const vw = probe.node().getComputedTextLength() + 10; probe.remove();
-    const x0 = lw + 10;
-    const max = m.f === 'pct' && el.dataset.max100 ? 100 : m.f === 'score' ? 10 : d3.max(rows, (d) => +d[m.field]) || 1;
+    const defs = rows.map((d) => (window.CGdef ? window.CGdef(el.dataset.defdim || dim, d[key], d[L]) : null));
+    const iw = defs.some(Boolean) ? 18 : 0;
+    const x0 = lw + 10 + iw;
+    const max = m.f === 'pct' && el.dataset.max100 ? 100 : m.f === 'score' ? 100 : d3.max(rows, (d) => +d[m.field]) || 1;
     const x = d3.scaleLinear().domain([0, max]).range([0, Math.max(20, W - x0 - vw)]);
     const fill = (d) => {
       if (el.dataset.tone) return TONE[tone(el.dataset.tone, d[m.field])] || dash.colors[0];
@@ -235,9 +238,10 @@
       .attr('x', 0).attr('y', (d, i) => i * rowH).attr('width', W).attr('height', rowH)
       .classed('cg-click', dim !== 'none')
       .on('pointermove', (ev, d) => tip.show([String(d[L]), ...extra.map(([f, k, n]) => [n, fmt(d[f], k)]),
-        ...(dim === 'none' ? [] : [['', d[key] === sel ? 'Click to clear filter' : 'Click to filter']])], ev))
+        ...(dim === 'none' ? [] : [['', d[key] === sel ? 'Click to close the call list' : 'Click to list these calls']])], ev))
       .on('pointerleave', () => tip.hide())
-      .on('click', (ev, d) => { if (dim === 'none') return; tip.hide(); toggleParam(dim, d[key]); });
+      .on('click', (ev, d) => { if (dim === 'none') return; tip.hide(); pick(dim, d[key]); });
+    if (iw) window.CGinfoIcons(el, svg, rows.map((d, i) => (defs[i] ? { x: lw + 16, y: i * rowH + rowH / 2, text: defs[i] } : null)).filter(Boolean));
   });
 
   // ---- trend explorer ----
@@ -299,9 +303,16 @@
         const r = rows[best];
         guide.attr('x1', x(r.x)).attr('x2', x(r.x)).style('opacity', 1);
         tip.show([(CG.grain === 'day' ? fmt(r.x, 'date') : CG.grain === 'hour' ? r.x + ' – ' + r.x.slice(0, 2) + ':59' : r.label) + '  ·  ' + IN(r.calls) + ' calls',
-          ...vis.map((s) => [s.label, fmt(r[s.id], s.f), colorOf(s)])], ev);
+          ...vis.map((s) => [s.label, fmt(r[s.id], s.f), colorOf(s)]), ['', 'Click to list these calls']], ev);
       })
-      .on('pointerleave', () => { tip.hide(); guide.style('opacity', 0); });
+      .on('pointerleave', () => { tip.hide(); guide.style('opacity', 0); })
+      .on('click', (ev) => {
+        const px = d3.pointer(ev)[0];
+        let best = 0, bd = Infinity;
+        rows.forEach((r, i) => { const d = Math.abs(x(r.x) - px); if (d < bd) { bd = d; best = i; } });
+        tip.hide(); pick('t' + CG.grain, rows[best].x);
+      });
+    svg.select('rect.cg-hit:last-of-type').style('cursor', 'pointer');
   });
 
   // ---- tables ----
@@ -310,7 +321,7 @@
     const g = dash.data(table.dataset.source);
     if (g.status !== 'ok' || !g.data) { tb.replaceChildren(); return; }
     const ths = [...table.querySelectorAll('thead th')];
-    const key = table.dataset.rowKey, dim = table.dataset.dim, sel = dim ? dash.params()[dim] : null;
+    const key = table.dataset.rowKey, dim = table.dataset.dim, sel = dim ? picked(dim) : null;
     let rows = g.data.slice();
     const sth = ths.find((t) => ['ascending', 'descending'].includes(t.getAttribute('aria-sort')));
     if (sth) {
@@ -323,8 +334,9 @@
       if (dim) {
         tr.className = 'cg-click' + (r[key] === sel ? ' cg-row-on' : '');
         tr.tabIndex = 0;
-        tr.addEventListener('click', () => toggleParam(dim, r[key]));
-        tr.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleParam(dim, r[key]); } });
+        tr.title = 'Click to list these calls';
+        tr.addEventListener('click', () => pick(dim, r[key]));
+        tr.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(dim, r[key]); } });
       }
       ths.forEach((th) => {
         const td = document.createElement('td'), v = r[th.dataset.field];

@@ -15,10 +15,12 @@
     document.querySelectorAll('[data-lseg] button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.v === ST.lm)));
   }
   document.querySelectorAll('[data-lseg] button').forEach((b) => b.addEventListener('click', () => { ST.lm = b.dataset.v; sync(); dash.draw('lbar'); }));
+  document.querySelectorAll('[data-lkpi]').forEach((b) => b.addEventListener('click', () => window.CGpick('Lkpi', b.dataset.lkpi)));
+  dash.onData(() => { const p = dash.params(); document.querySelectorAll('[data-lkpi]').forEach((b) => b.setAttribute('aria-pressed', String(p.pwdim === 'Lkpi' && p.pwcat === b.dataset.lkpi))); });
   document.querySelectorAll('[data-lclear]').forEach((b) => b.addEventListener('click', () => {
     dash.setParams(Object.fromEntries(Object.keys(LKEYS).map((k) => [k, null])));
   }));
-  document.querySelectorAll('.cg-tab').forEach((t) => t.addEventListener('click', () => { dash.draw('lbar'); dash.draw('lchips'); }));
+  document.querySelectorAll('.cg-tab').forEach((t) => t.addEventListener('click', () => { dash.draw('lbar'); dash.draw('lchips'); dash.draw('pwcalls'); }));
   window.addEventListener('beforeprint', () => { dash.draw('lbar'); dash.draw('lchips'); });
   sync();
 
@@ -50,7 +52,7 @@
     const dim = el.dataset.dim, key = el.dataset.key, L = el.dataset.label || key;
     const m = el.dataset.measure ? LM[el.dataset.measure] : LM[ST.lm];
     const rows = g.data.filter((r) => r[m.field] != null);
-    const sel = dim ? dash.params()[dim] : null;
+    const sel = dim && dash.params().pwdim === dim ? dash.params().pwcat : null;
     const rowH = 30, H = rows.length * rowH + 4;
     el.replaceChildren();
     const svg = d3.select(el).append('svg').attr('width', W).attr('height', H).attr('role', 'img').attr('aria-label', el.dataset.aria || 'Bar chart');
@@ -60,7 +62,9 @@
     const vt = (d) => fmt(d[m.field], m.f) + (m.field === 'leads' && d.share != null ? '  ·  ' + fmt(d.share, 'pct') : '');
     const probe = svg.append('text').attr('class', 'cg-val').text(rows.map(vt).reduce((a, b) => (b.length > a.length ? b : a), ''));
     const vw = probe.node().getComputedTextLength() + 10; probe.remove();
-    const x0 = lw + 10;
+    const defs = rows.map((d) => (window.CGdef && dim ? window.CGdef(dim, d[key], d[L]) : null));
+    const iw = defs.some(Boolean) ? 18 : 0;
+    const x0 = lw + 10 + iw;
     const max = m.f === 'pct' ? 100 : d3.max(rows, (d) => +d[m.field]) || 1;
     const x = d3.scaleLinear().domain([0, max]).range([0, Math.max(20, W - x0 - vw)]);
     const fill = el.dataset.color === 'ok' ? 'var(--color-ok)' : dash.colors[+(el.dataset.color || 0)];
@@ -75,7 +79,7 @@
     const show = (ev, d) => {
       const lines = [['', String(d[L])]];
       for (const k of (el.dataset.tip || 'leads,reached_pct,promised_pct,paid_pct,calls_per_lead').split(',')) if (d[k] !== undefined) lines.push([LM[k] ? LM[k].label : k, fmt(d[k], LM[k] ? LM[k].f : 'int')]);
-      if (dim) lines.push(['', d[key] === sel ? 'Click to clear filter' : 'Click to filter leads']);
+      if (dim) lines.push(['', d[key] === sel ? 'Click to close the call list' : 'Click to list the calls of these leads']);
       tipEl.replaceChildren(...lines.map(([a, b], i) => {
         const dv = document.createElement('div');
         if (i === 0) { dv.className = 'cg-tip-h'; dv.textContent = b; return dv; }
@@ -91,6 +95,7 @@
     svg.append('g').selectAll('rect').data(rows).join('rect').attr('class', 'cg-hit').classed('cg-click', !!dim)
       .attr('x', 0).attr('y', (d, i) => i * rowH).attr('width', W).attr('height', rowH)
       .on('pointermove', show).on('pointerleave', () => { tipEl.hidden = true; })
-      .on('click', (ev, d) => { if (!dim) return; tipEl.hidden = true; toggle(dim, d[key]); });
+      .on('click', (ev, d) => { if (!dim) return; tipEl.hidden = true; window.CGpick(dim, d[key]); });
+    if (iw) window.CGinfoIcons(el, svg, rows.map((d, i) => (defs[i] ? { x: lw + 16, y: i * rowH + rowH / 2, text: defs[i] } : null)).filter(Boolean));
   });
 })();

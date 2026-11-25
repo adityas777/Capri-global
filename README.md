@@ -1,6 +1,6 @@
 # Capri Global – Collections Call Explorer (standalone)
 
-A self-contained copy of the interactive Collections Call Explorer (November 2026 calls, 2–23 Nov).
+A self-contained copy of the interactive Collections Call Explorer (November 2026 calls, 2–24 Nov).
 Plain HTML, CSS and JavaScript – no build step, no server code, no internet connection needed.
 
 ## Files
@@ -8,10 +8,10 @@ Plain HTML, CSS and JavaScript – no build step, no server code, no internet co
 |------|-----------|
 | index.html | The page |
 | styles.css, theme.css | Layout, colours (light and dark mode) |
-| data.js | The call-level data (15,824 calls, 2–23 Nov) |
+| data.js | The call-level data (16,846 calls, 2–24 Nov) |
 | dash-shim.js | Small runtime that loads the data, applies filters and redraws charts |
 | loaders.js, calcs.js, leads_calcs.js, trends_calcs.js, pw_calcs.js | How the data is unpacked and every figure is calculated |
-| ui.js, leads_ui.js, leads_links.js, extras.js, pw_ui.js, fatal_ui.js | Charts, tables, tabs, click-to-filter, fatal / non-fatal breakdowns and call links |
+| defs.js, ui.js, leads_ui.js, leads_links.js, extras.js, pw_ui.js, fatal_ui.js | Charts, tables, tabs, click-to-filter, fatal / non-fatal breakdowns and call links |
 | d3.min.js | Charting library (d3 v7.9.0, ISC licence – see d3-LICENSE.txt) |
 
 ## Try it locally
