@@ -194,3 +194,12 @@ button.cg-kpi[aria-pressed="true"] { border-color: var(--color-fg); box-shadow: 
 .cg-pwcalls.cg-pop .cg-pwcalls-body { max-height: 320px; }
 .cg-pwcalls.cg-pop::before { content: ""; position: absolute; top: -7px; left: 24px; width: 12px; height: 12px; background: var(--color-panel); border-left: 1px solid var(--color-fg-muted); border-top: 1px solid var(--color-fg-muted); transform: rotate(45deg); }
 .cg-fb { position: relative; }
+/* clickable legend for the over-time charts */
+.cg-legend-toggle { gap: 6px; }
+.cg-legbtn { appearance: none; font: inherit; font-size: var(--cds-font-size-caption); display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--color-border-line); background: none; color: var(--color-fg-muted); border-radius: 999px; padding: 3px 10px 3px 8px; cursor: pointer; text-align: left; }
+.cg-legbtn.on { color: var(--color-fg); border-color: var(--color-fg-muted); background: var(--color-bg); }
+.cg-legbtn:not(.on) .cg-sw { opacity: .25; }
+.cg-legbtn:hover { border-color: var(--color-fg); }
+.cg-legctl { display: flex; gap: 6px; margin: 2px 0 6px; }
+.cg-dot-click { cursor: pointer; stroke: var(--color-panel); stroke-width: 1.5; }
+.cg-dot-click:hover { stroke: var(--color-fg); }

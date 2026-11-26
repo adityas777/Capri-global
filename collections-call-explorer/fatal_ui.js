@@ -83,7 +83,9 @@
     gg.append('text').attr('class', 'cg-donut-l').attr('text-anchor', 'middle').attr('y', 24).text('Total calls');
   });
 
-  // lines over time, one per parameter (top 5 by total)
+  // lines over time, one per parameter. The legend chips switch lines on and off (the five largest start on);
+  // clicking a point lists the calls behind it.
+  const SEL = (ST.sel = ST.sel || {});
   dash.draw('fline', (el) => {
     const g = dash.data(el.dataset.source);
     if (g.status === 'loading' || g.data == null) { el.classList.add('dash-skeleton'); return; }
@@ -93,11 +95,32 @@
     const W = el.clientWidth; if (!W) return;
     const tot = {};
     for (const r of rows) for (const k of Object.keys(NAMES)) if (r[k]) tot[k] = (tot[k] || 0) + r[k];
-    const ser = Object.keys(tot).sort((a, b) => tot[b] - tot[a]).slice(0, 5);
+    const all = Object.keys(tot).sort((a, b) => tot[b] - tot[a]);
+    const key = el.dataset.source;
+    if (!SEL[key]) SEL[key] = new Set(all.slice(0, 5));
+    const on = SEL[key];
+    const colorOf = (k) => { const i = all.indexOf(k); return dash.colors[i % dash.colors.length]; };
+    const dashOf = (k) => (Math.floor(all.indexOf(k) / dash.colors.length) % 2 ? '6 4' : null);
+    const ser = all.filter((k) => on.has(k));
     el.replaceChildren();
-    const leg = document.createElement('div'); leg.className = 'cg-legend';
-    ser.forEach((k, i) => { const s = document.createElement('span'); const sw = document.createElement('i'); sw.className = 'cg-sw'; sw.style.background = dash.colors[i % dash.colors.length]; s.append(sw, NAMES[k]); leg.appendChild(s); });
-    el.appendChild(leg);
+    // legend: every parameter with data, click to show or hide its line
+    const leg = document.createElement('div'); leg.className = 'cg-legend cg-legend-toggle';
+    for (const k of all) {
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'cg-legbtn' + (on.has(k) ? ' on' : '');
+      b.setAttribute('aria-pressed', String(on.has(k)));
+      b.title = (on.has(k) ? 'Hide ' : 'Show ') + NAMES[k] + ' (' + IN(tot[k]) + ' calls in total)';
+      const sw = document.createElement('i'); sw.className = 'cg-sw'; sw.style.background = colorOf(k);
+      b.append(sw, NAMES[k]);
+      b.addEventListener('click', () => { if (on.has(k)) on.delete(k); else on.add(k); dash.draw('fline'); });
+      leg.appendChild(b);
+    }
+    const ctl = document.createElement('div'); ctl.className = 'cg-legctl';
+    for (const [lab, fn] of [['Show all', () => all.forEach((k) => on.add(k))], ['Clear', () => on.clear()], ['Top 5', () => { on.clear(); all.slice(0, 5).forEach((k) => on.add(k)); }]]) {
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'cg-linkbtn'; b.textContent = lab;
+      b.addEventListener('click', () => { fn(); dash.draw('fline'); }); ctl.appendChild(b);
+    }
+    el.append(leg, ctl);
+    if (!ser.length) { const p = document.createElement('p'); p.className = 'cg-fail'; p.textContent = 'Pick at least one parameter above to draw its line.'; el.appendChild(p); return; }
     const H = 260, m = { t: 10, r: 14, b: 28, l: 12 };
     const svg = d3.select(el).append('svg').attr('width', W).attr('height', H).attr('role', 'img').attr('aria-label', el.dataset.aria);
     const y = d3.scaleLinear().domain([0, (d3.max(rows, (r) => d3.max(ser, (k) => r[k] || 0)) || 1) * 1.08]).nice();
@@ -110,11 +133,8 @@
     const every = Math.max(1, Math.ceil((rows.length * 90) / (W - m.l - m.r)));
     svg.append('g').attr('class', 'cg-axis').selectAll('text').data(rows.filter((r, i) => i % every === 0)).join('text')
       .attr('x', (r) => x(r.key)).attr('y', H - 8).attr('text-anchor', 'middle').text((r) => r.category);
-    ser.forEach((k, i) => {
-      const c = dash.colors[i % dash.colors.length];
-      svg.append('path').datum(rows).attr('class', 'cg-line').style('stroke', c).attr('d', d3.line().x((r) => x(r.key)).y((r) => y(r[k] || 0)));
-      svg.append('g').selectAll('circle').data(rows).join('circle').attr('r', 3).attr('cx', (r) => x(r.key)).attr('cy', (r) => y(r[k] || 0)).style('fill', c);
-    });
+    for (const k of ser) svg.append('path').datum(rows).attr('class', 'cg-line').style('stroke', colorOf(k)).style('stroke-dasharray', dashOf(k))
+      .attr('d', d3.line().x((r) => x(r.key)).y((r) => y(r[k] || 0)));
     const guide = svg.append('line').attr('class', 'cg-guide').attr('y1', m.t).attr('y2', H - m.b).style('opacity', 0);
     const tip = tipBox(el);
     svg.append('rect').attr('class', 'cg-hit').attr('x', m.l).attr('width', W - m.l - m.r).attr('height', H)
@@ -124,8 +144,18 @@
         rows.forEach((r, i) => { const dd = Math.abs(x(r.key) - px); if (dd < bd) { bd = dd; best = i; } });
         const r = rows[best];
         guide.attr('x1', x(r.key)).attr('x2', x(r.key)).style('opacity', 1);
-        tip.show(r.category + ' · ' + IN(r.total) + ' calls', ser.map((k, i) => [NAMES[k], IN(r[k] || 0), dash.colors[i % dash.colors.length]]), ev);
+        tip.show(r.category + ' · ' + IN(r.total) + ' calls', [...ser.map((k) => [NAMES[k], IN(r[k] || 0), colorOf(k)]), ['', 'Click a dot to list its calls']], ev);
       })
       .on('pointerleave', () => { tip.hide(); guide.style('opacity', 0); });
+    // dots on top of the hover area so each one can be clicked
+    const listDim = el.dataset.listdim, pr = dash.params();
+    const pts = [];
+    for (const k of ser) for (const r of rows) pts.push({ k, r });
+    svg.append('g').selectAll('circle').data(pts).join('circle').attr('class', 'cg-dot-click')
+      .attr('r', (d) => (pr.pwdim === listDim && pr.pwcat === d.k + '||' + d.r.key ? 7 : 4.5))
+      .attr('cx', (d) => x(d.r.key)).attr('cy', (d) => y(d.r[d.k] || 0)).style('fill', (d) => colorOf(d.k))
+      .on('pointermove', (ev, d) => { ev.stopPropagation(); guide.style('opacity', 0); tip.show(d.r.category, [[NAMES[d.k], IN(d.r[d.k] || 0) + ' calls', colorOf(d.k)], ['', 'Click to list these calls']], ev); })
+      .on('pointerleave', () => tip.hide())
+      .on('click', (ev, d) => { tip.hide(); window.CGpick(listDim, d.k + '||' + d.r.key); });
   });
 })();

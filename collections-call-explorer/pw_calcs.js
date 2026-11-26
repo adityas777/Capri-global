@@ -68,50 +68,6 @@ dash.calc('pw_cap', {
   },
 });
 
-dash.calc('pw_reason', {
-  title: 'Calls by reason for non-payment, with specific reasons',
-  description: 'Every call in the selection by the main reason for non-payment, each followed by the specific reasons customers named inside it (“Other / not specified” = no specific reason). Calls too short to audit show as Non-Actionable Calls. Share is of all calls in the selection.',
-  inputs: ['calls'],
-  fn: (calls) => {
-    const p = dash.params();
-    const keep = (r) => (!p.ctype || (r.campaign != null && (r.campaign.startsWith('PDM') ? 'Awareness' : 'Collection') === p.ctype)) &&
-      (!p.week || r.week === p.week) &&
-      (!p.agent || r.agent === p.agent) &&
-      (!p.lang || r.lang === p.lang) &&
-      (!p.campaign || r.campaign === p.campaign) &&
-      (!p.outcome || r.outcome === p.outcome) &&
-      (!p.intent || r.intent === p.intent) &&
-      (!p.cap || r.cap === p.cap) &&
-      (!p.reason || r.reason === p.reason) &&
-      (!p.rsub || r.rsub === p.rsub) &&
-      (!p.sent || r.sent === p.sent) &&
-      (!p.attend || r.attend === p.attend) &&
-      (!p.dband || r.dband === p.dband) &&
-      (!p.flag || r[p.flag] === 1) &&
-      (!p.param || r[p.param] === 0 || r[p.param] === 2);
-    const cat = new Map(), sub = new Map();
-    let n = 0;
-    for (const r of calls) {
-      if (!keep(r)) continue;
-      const v = r.act ? r.reason : 'Non-Actionable Calls';
-      if (v == null) continue;
-      n++; cat.set(v, (cat.get(v) || 0) + 1);
-      if (r.act && r.rsub != null) { const k = v + '||' + r.rsub; sub.set(k, (sub.get(k) || 0) + 1); }
-    }
-    const pc = (c) => (n ? Math.round(10000 * c / n) / 100 : null);
-    const rows = [];
-    for (const [c, k] of [...cat].sort((a, b) => b[1] - a[1])) {
-      rows.push({ category: c, key: c, level: 0, calls: k, share: pc(k) });
-      const subs = [...sub].filter(([s]) => s.startsWith(c + '||')).sort((a, b) => b[1] - a[1]);
-      if (!subs.length) continue;
-      let used = 0;
-      for (const [s, m] of subs) { used += m; rows.push({ category: s.slice(c.length + 2), key: s, parent: c, level: 1, calls: m, share: pc(m) }); }
-      if (k - used > 0) rows.push({ category: 'Other / not specified', key: c + '||__rest', parent: c, level: 1, calls: k - used, share: pc(k - used) });
-    }
-    return rows;
-  },
-});
-
 dash.calc('pw_settle', {
   title: 'Calls by settlement intent',
   description: 'Every call in the selection by settlement intent; calls too short to audit show as Non-Actionable Calls. Share is of all calls in the selection.',
@@ -474,6 +430,8 @@ dash.calc('pw_call_list', {
       nfail: (r, c) => !r.fatal && !!r.act && r[c] === 0,
       nagent: (r, c) => !r.fatal && r.agent === c, nsup: (r, c) => !r.fatal && r.sup === c,
       rsub: (r, c) => !!r.act && r.rsub === c,
+      freasont: (r, c) => { const [id, k] = c.split('||'); return !!r.fatal && r.freason != null && r.freason.split('|').includes(id) && (r.week === k || r.date === k); },
+      nfailt: (r, c) => { const [id, k] = c.split('||'); return !r.fatal && !!r.act && r[id] === 0 && (r.week === k || r.date === k); },
       rsubc: (r, c) => { const [pa, su] = c.split('||'); return !!r.act && r.reason === pa && (su === '__rest' ? r.rsub == null : r.rsub === su); }, week: (r, c) => r.week === c, tweek: (r, c) => r.week === c,
       tday: (r, c) => r.date === c, thour: (r, c) => r.hour === +String(c).slice(0, 2),
       agent: (r, c) => r.agent === c, agent2: (r, c) => r.agent === c, coach: (r, c) => !!r.act && r.agent === c, aheat: (r, c) => !!r.act && r.agent === c,
